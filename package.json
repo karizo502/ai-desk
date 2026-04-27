@@ -1,0 +1,46 @@
+{
+  "name": "ai-desk",
+  "version": "0.1.0",
+  "description": "Security-First, Token-Efficient AI Gateway",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "ai-desk": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist/",
+    "skills/",
+    "ai-desk.example.json",
+    ".env.example"
+  ],
+  "scripts": {
+    "prepare": "npm run build",
+    "build": "tsc && node -e \"const fs=require('fs');const f='dist/cli/index.js';const c=fs.readFileSync(f,'utf8');if(!c.startsWith('#!/'))fs.writeFileSync(f,'#!/usr/bin/env node\\n'+c)\"",
+    "dev": "tsx watch src/cli/index.ts gateway",
+    "start": "node dist/cli/index.js gateway",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "security:audit": "tsx src/cli/index.ts security audit"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.0",
+    "better-sqlite3": "^11.7.0",
+    "commander": "^13.0.0",
+    "dotenv": "^16.4.0",
+    "uuid": "^14.0.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^22.0.0",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.5.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

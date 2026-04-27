@@ -1,0 +1,21 @@
+{
+  "name": "brave-search",
+  "version": "1.0.0",
+  "description": "Web search via Brave Search MCP server (requires BRAVE_API_KEY)",
+  "author": "ai-desk",
+  "tags": ["web", "search", "mcp"],
+  "mcpServer": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+    "env": {
+      "BRAVE_API_KEY": "${BRAVE_API_KEY}"
+    },
+    "capabilities": ["brave_web_search", "brave_local_search"],
+    "sandbox": true
+  },
+  "toolAllowlist": [
+    "mcp_skill_brave-search_brave_web_search",
+    "mcp_skill_brave-search_brave_local_search"
+  ],
+  "systemPromptAddition": "You have access to real-time web search via Brave Search. Use `mcp_skill_brave-search_brave_web_search` when the user needs current information, news, or facts you may not have. Prefer specific queries over broad ones."
+}

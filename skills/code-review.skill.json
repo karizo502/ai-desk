@@ -1,0 +1,9 @@
+{
+  "name": "code-review",
+  "version": "1.0.0",
+  "description": "Structured code review: security, performance, test coverage, style",
+  "author": "ai-desk",
+  "tags": ["code", "review", "security", "quality"],
+  "toolAllowlist": ["read_file", "glob", "grep"],
+  "systemPromptAddition": "When reviewing code, always check these dimensions in order:\n1. **Security** — injection, authentication flaws, secrets in code, path traversal\n2. **Correctness** — logic errors, edge cases, error handling\n3. **Performance** — N+1 queries, unnecessary allocations, blocking I/O\n4. **Maintainability** — naming, complexity, duplication\n5. **Tests** — coverage gaps, missing edge case tests\nFormat findings as: [SEVERITY: critical/high/medium/low] Description → Suggestion."
+}

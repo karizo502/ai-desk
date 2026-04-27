@@ -1,0 +1,9 @@
+{
+  "name": "shell",
+  "version": "1.0.0",
+  "description": "Execute sandboxed shell commands (exec_command) — use with caution",
+  "author": "ai-desk",
+  "tags": ["shell", "exec", "sandbox"],
+  "toolAllowlist": ["exec_command"],
+  "systemPromptAddition": "You can run sandboxed shell commands with `exec_command`. Commands run in the agent workspace with network access disabled. Always prefer targeted tools (read_file, glob) over shell when possible. Never run destructive commands without explicit user confirmation."
+}

@@ -1,0 +1,9 @@
+{
+  "name": "web-fetch",
+  "version": "1.0.0",
+  "description": "Fetch web pages and APIs over HTTPS (fetch_url tool)",
+  "author": "ai-desk",
+  "tags": ["web", "http", "fetch"],
+  "toolAllowlist": ["fetch_url"],
+  "systemPromptAddition": "You can fetch URLs using the `fetch_url` tool (HTTPS only, max 512KB). Use it to retrieve documentation, APIs, or web content when the user needs current information."
+}

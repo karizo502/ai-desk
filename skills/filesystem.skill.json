@@ -1,0 +1,16 @@
+{
+  "name": "filesystem",
+  "version": "1.0.0",
+  "description": "Read and write files in the agent workspace (write_file, glob, grep)",
+  "author": "ai-desk",
+  "tags": ["files", "io", "search"],
+  "toolAllowlist": [
+    "read_file",
+    "write_file",
+    "list_files",
+    "view_stat",
+    "glob",
+    "grep"
+  ],
+  "systemPromptAddition": "You have full filesystem access within the workspace: read, write, search files. Use `glob` to find files by pattern, `grep` to search content, `read_file` / `write_file` for I/O."
+}

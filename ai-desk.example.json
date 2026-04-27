@@ -1,0 +1,184 @@
+{
+  "gateway": {
+    "bind": "127.0.0.1",
+    "port": 18789,
+    "auth": {
+      "mode": "token",
+      "maxFailedAttempts": 5,
+      "lockoutDurationMs": 300000,
+      "tokenExpiryMs": 86400000
+    },
+    "rateLimit": {
+      "maxPerSecond": 10,
+      "maxConnections": 50
+    },
+    "maxFrameSize": 1048576,
+    "heartbeatIntervalMs": 30000
+  },
+
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "anthropic/claude-sonnet-4-6",
+        "failover": ["google/gemini-2.5-flash"],
+        "compaction": "anthropic/claude-haiku-4-5-20251001"
+      },
+      "timeoutSeconds": 172800,
+      "sandbox": {
+        "mode": "all",
+        "timeoutMs": 30000,
+        "maxMemoryMb": 512,
+        "networkAccess": false
+      },
+      "tools": {
+        "profile": "deny-all"
+      },
+      "budget": {
+        "daily": { "tokens": 500000, "cost": 5.0 },
+        "monthly": { "tokens": 10000000, "cost": 50.0 },
+        "perRun": { "maxTokens": 50000 },
+        "warningThreshold": 0.8,
+        "action": "warn"
+      },
+      "subagents": {
+        "model": "google/gemini-2.5-flash",
+        "maxDepth": 3,
+        "maxConcurrent": 5,
+        "sandbox": "require",
+        "runTimeoutSeconds": 300,
+        "budget": "inherit"
+      }
+    },
+    "list": [
+      {
+        "id": "main",
+        "default": true,
+        "workspace": ".",
+        "tools": { "profile": "readonly" }
+      },
+      {
+        "id": "coder",
+        "workspace": ".",
+        "tools": {
+          "profile": "full",
+          "allow": ["read_file", "write_file", "glob", "grep", "exec_command"],
+          "deny": ["fetch_url"]
+        },
+        "budget": {
+          "daily": { "tokens": 200000, "cost": 2.0 },
+          "monthly": { "tokens": 4000000, "cost": 20.0 },
+          "perRun": { "maxTokens": 30000 },
+          "warningThreshold": 0.8,
+          "action": "warn"
+        }
+      },
+      {
+        "id": "researcher",
+        "workspace": ".",
+        "tools": {
+          "profile": "readonly",
+          "allow": ["fetch_url", "read_file", "glob", "grep"]
+        }
+      },
+      {
+        "id": "reviewer",
+        "workspace": ".",
+        "tools": {
+          "profile": "readonly",
+          "allow": ["read_file", "glob", "grep"]
+        }
+      }
+    ]
+  },
+
+  "cache": {
+    "enabled": true,
+    "backend": "sqlite",
+    "ttlSeconds": 3600
+  },
+
+  "memory": {
+    "backend": "none",
+    "compaction": {
+      "threshold": 0.6,
+      "model": "anthropic/claude-haiku-4-5-20251001"
+    }
+  },
+
+  "mcp": {
+    "security": {
+      "sandboxAll": true,
+      "denyCapabilities": [],
+      "perServerBudget": { "dailyTokens": 50000 }
+    },
+    "servers": {}
+  },
+
+  "messaging": {
+    "telegram": {
+      "enabled": false,
+      "agentId": "main",
+      "allowedChatIds": [],
+      "maxConcurrentPerChat": 1
+    },
+    "discord": {
+      "enabled": false,
+      "agentId": "main",
+      "allowedGuildIds": [],
+      "allowedChannelIds": [],
+      "prefix": "!ask",
+      "maxConcurrentPerChannel": 1
+    }
+  },
+
+  "teams": {
+    "roles": [
+      {
+        "id": "planner",
+        "name": "Planner",
+        "description": "Analyses the goal and creates a structured plan",
+        "systemPromptPrefix": "You are a planning agent. Break work into clear, concrete steps. Be precise about what each step requires.",
+        "canDelegateTo": ["executor", "reviewer"]
+      },
+      {
+        "id": "executor",
+        "name": "Executor",
+        "description": "Implements assigned tasks and reports results",
+        "systemPromptPrefix": "You are an execution agent. Focus on delivering exactly what is asked. Report clearly on what you did and any issues encountered."
+      },
+      {
+        "id": "reviewer",
+        "name": "Reviewer",
+        "description": "Reviews work for correctness, security, and quality",
+        "systemPromptPrefix": "You are a review agent. Evaluate work critically. Look for bugs, security issues, missing edge cases, and unclear logic. Give concrete feedback."
+      }
+    ],
+    "teams": [
+      {
+        "id": "dev-team",
+        "name": "Dev Team",
+        "leadAgentId": "main",
+        "sharedGoal": "Deliver high-quality, secure code with clear documentation",
+        "members": [
+          { "agentId": "coder",    "roleId": "executor" },
+          { "agentId": "reviewer", "roleId": "reviewer" }
+        ]
+      },
+      {
+        "id": "research-team",
+        "name": "Research Team",
+        "leadAgentId": "main",
+        "members": [
+          { "agentId": "researcher", "roleId": "executor" },
+          { "agentId": "reviewer",   "roleId": "reviewer" }
+        ]
+      }
+    ]
+  },
+
+  "notifications": {
+    "budgetAlerts": true,
+    "subagentCompletion": true,
+    "securityAlerts": true
+  }
+}
