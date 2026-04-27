@@ -1,6 +1,6 @@
 # AI_DESK (AI Desktop Security Gateway)
 
-**AI_DESK** คือระบบ AI Gateway ที่ออกแบบมาโดยยึดหลัก **"Security-First"** และ **"Token-Efficient"** เป็นหัวใจสำคัญ สร้างขึ้นโดยอ้างอิงและพัฒนาต่อยอดจากสถาปัตยกรรมของ OpenClaw แต่ปรับปรุงให้มีความปลอดภัยสูงขึ้นและประหยัดค่าใช้จ่ายในการเรียกใช้ Model ให้มากที่สุด
+**AI_DESK** คือระบบ AI Gateway ที่ออกแบบมาโดยยึดหลัก **"Security-First"** และ **"Token-Efficient"** เป็นหัวใจสำคัญ สร้างขึ้นโดยอ้างอิงและพัฒนาต่อยอดจากสถาปัตยกรรม และ ปรับปรุงให้มีความปลอดภัยสูงขึ้นและประหยัดค่าใช้จ่ายในการเรียกใช้ Model ให้มากที่สุด
 
 เหมาะสำหรับใช้เป็นศูนย์กลางในการรัน AI Agents และ Sub-agents ส่วนตัว โดยไม่ต้องกังวลเรื่องข้อมูลหลุด หรือค่าใช้จ่าย API ที่บานปลาย
 
@@ -218,7 +218,7 @@ npx tsx src/cli/index.ts orchestrate run '[
 ]'
 ```
 
-### 11. Teams & Roles (Phase Paperclip) 👥
+### 11. Teams & Roles  👥
 
 เพิ่ม `teams` block ใน `ai-desk.json` (หรือดู `ai-desk.example.json`):
 ```json
@@ -314,7 +314,7 @@ GET /dashboard/events         → SSE stream (event: snapshot / event: event)
 ### Phase 4 (b) — Messaging Adapters
 - `src/messaging/` - Telegram (long polling + typing indicator), Discord (Gateway WebSocket + auto-reconnect), MessagingManager (per-channel lock + queue, threat filtering)
 
-### Phase Paperclip — Roles, Teams & Dashboard
+### Phase 5 — Roles, Teams & Dashboard
 - `src/roles/` - `RoleDefinition`, `TeamDefinition` (re-exported from config schema), `TeamCoordinator` (3-phase: decompose → execute → synthesise)
 - `src/dashboard/` - `DashboardServer` (SSE at `/dashboard/events`, snapshot at `/dashboard/api/snapshot`), self-contained dark-theme SPA at `/dashboard`
 - `src/__tests__/` - Unit tests: TaskGraph (15), PolicyEngine (13), ResponseCache (7), TeamCoordinator (9) — **44 tests, 0 failures**
@@ -381,7 +381,7 @@ Orchestrator
 **Orchestration:** Tasks declare dependencies (DAG). Ready tasks run in parallel; results inject into downstream prompts via `{{results.<id>}}`. Failed tasks cascade-skip dependents unless `failFast: false`.
 
 ---
-## 🏗️ Phase Paperclip Architecture (Teams)
+## 🏗️ Phase 5 Architecture (Teams)
 
 ```
 ai-desk team run <teamId> <goal>
@@ -418,4 +418,4 @@ eventBus.emit(*) ─→ DashboardServer.broadcast() ─→ SSE clients
 
 ---
 
-*ระบบอยู่ใน Phase Paperclip (Multi-agent Roles, Teams, Dashboard, 44 tests) — Phase ถัดไป: memory persistence (sqlite-vec), streaming responses, REST API*
+*ระบบอยู่ใน Phase 5 (Multi-agent Roles, Teams, Dashboard, 44 tests) — Phase ถัดไป: memory persistence (sqlite-vec), streaming responses, REST API*
