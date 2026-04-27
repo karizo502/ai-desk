@@ -19,28 +19,29 @@ export function getDashboardHtml(): string {
 <title>AI_DESK Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Bebas+Neue&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
   --sidebar-w: 240px;
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --font-main: 'Outfit', sans-serif;
+  --font-tactical: 'Bebas Neue', 'Impact', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   --shadow: 0 4px 20px rgba(0,0,0,0.1);
 }
 
 /* Theme Dark (Default) */
 .theme-dark {
-  --bg: #0a0a0a;
-  --bg-sidebar: #0e0e0e;
-  --bg-card: #151515;
-  --bg-input: #1a1a1a;
-  --border: rgba(255, 255, 255, 0.08);
-  --text: #e2e8f0;
-  --muted: #8b8b8b;
-  --accent: #d8a45e;
-  --accent-soft: rgba(216, 164, 94, 0.15);
-  --glass: rgba(10, 10, 10, 0.85);
+  --bg: #0c0c0c;
+  --bg-sidebar: #080808;
+  --bg-card: #121212;
+  --bg-input: #181818;
+  --border: rgba(200, 144, 72, 0.15);
+  --text: #f4efe5;
+  --muted: #888;
+  --accent: #c89048;
+  --accent-soft: rgba(200, 144, 72, 0.12);
+  --glass: rgba(12, 12, 12, 0.9);
   --green: #4ade80;
   --red: #f87171;
   --yellow: #facc15;
@@ -89,77 +90,95 @@ body {
   box-shadow: var(--shadow); animation: slideUp 0.5s ease;
 }
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-.login-logo { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+.login-logo { font-size: 32px; font-weight: 900; margin-bottom: 8px; letter-spacing: 4px; font-family: var(--font-tactical); text-transform: uppercase; }
 .login-logo span { color: var(--accent); }
-.login-subtitle { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+.login-subtitle { color: var(--muted); font-size: 11px; margin-bottom: 24px; text-transform: uppercase; letter-spacing: 0.2em; }
 .login-input {
   width: 100%; background: var(--bg-input); border: 1px solid var(--border);
-  color: var(--text); padding: 12px 16px; border-radius: 12px; margin-bottom: 16px;
+  color: var(--text); padding: 14px 16px; border-radius: 4px; margin-bottom: 16px;
   font-family: var(--font-mono); font-size: 13px; outline: none; transition: var(--transition);
+  text-align: center;
 }
-.login-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.login-input:focus { border-color: var(--accent); box-shadow: 0 0 15px var(--accent-soft); }
 .login-btn {
-  width: 100%; background: var(--accent); color: #fff; border: none; padding: 12px;
-  border-radius: 12px; font-weight: 600; cursor: pointer; transition: var(--transition);
+  width: 100%; background: var(--accent); color: #000; border: none; padding: 14px;
+  border-radius: 4px; font-weight: 700; cursor: pointer; transition: var(--transition);
+  text-transform: uppercase; letter-spacing: 0.1em;
 }
-.login-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+.login-btn:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 5px 15px var(--accent-soft); }
 
-/* ── Sidebar ────────────────────────────────────────────── */
+/* ── Sidebar ───────────────────────────────────────────── */
 aside {
   width: var(--sidebar-w); background: var(--bg-sidebar); border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; flex-shrink: 0; transition: var(--transition);
+  display: flex; flex-direction: column; height: 100%; transition: var(--transition);
+  box-shadow: 5px 0 20px rgba(0,0,0,0.5);
 }
-.sidebar-hdr { padding: 24px; display: flex; align-items: center; gap: 12px; }
-.sidebar-logo { font-size: 18px; font-weight: 700; color: var(--text); }
+.sidebar-hdr { padding: 32px 24px; }
+.sidebar-logo { font-size: 24px; font-weight: 900; letter-spacing: 2px; font-family: var(--font-tactical); text-transform: uppercase; }
 .sidebar-logo span { color: var(--accent); }
-
 .nav-group { flex: 1; padding: 0 12px; }
 .nav-tab {
-  width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 16px;
-  background: none; border: none; color: var(--muted); border-radius: 0;
-  cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600;
-  transition: var(--transition); margin-bottom: 2px;
-  border-left: 3px solid transparent; text-transform: uppercase; letter-spacing: 0.05em;
+  width: 100%; background: none; border: none; color: var(--muted); padding: 12px 16px;
+  border-radius: 4px; cursor: pointer; text-align: left; display: flex; align-items: center;
+  gap: 12px; font-weight: 500; transition: var(--transition); margin-bottom: 4px;
+  text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em;
 }
-.nav-tab:hover { background: var(--bg-card); color: var(--text); }
-.nav-tab.active { background: var(--bg-card); color: var(--accent); border-left-color: var(--accent); }
-.nav-tab .icon { font-size: 18px; width: 20px; text-align: center; }
-
-.sidebar-ftr { padding: 20px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; }
+.nav-tab:hover { background: var(--bg-input); color: var(--text); }
+.nav-tab.active { background: var(--accent-soft); color: var(--accent); border-left: 3px solid var(--accent); padding-left: 13px; }
+.nav-tab .icon { font-size: 16px; opacity: 0.8; }
+.sidebar-ftr { padding: 24px; border-top: 1px solid var(--border); }
 .theme-toggle {
-  display: flex; align-items: center; justify-content: space-between;
-  background: var(--bg-input); padding: 8px 12px; border-radius: 10px; cursor: pointer;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 12px; border-radius: 4px; background: var(--bg-input);
+  font-size: 10px; font-weight: 700; cursor: pointer; margin-bottom: 12px;
+  color: var(--muted); transition: var(--transition); border: 1px solid transparent;
 }
-.theme-toggle span { font-size: 12px; font-weight: 600; color: var(--muted); }
-.logout-btn { color: var(--red); font-size: 12px; font-weight: 600; cursor: pointer; text-align: center; }
+.theme-toggle:hover { border-color: var(--border); color: var(--text); }
+.logout-btn {
+  font-size: 11px; font-weight: 700; color: var(--red); cursor: pointer;
+  text-align: center; opacity: 0.7; transition: var(--transition);
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
+.logout-btn:hover { opacity: 1; }
 
-/* ── Main Content ───────────────────────────────────────── */
+/* ── Main Layout ────────────────────────────────────────── */
 main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
 .main-hdr {
-  height: 64px; border-bottom: 1px solid var(--border); padding: 0 24px;
-  display: flex; align-items: center; justify-content: space-between; background: var(--glass);
-  backdrop-filter: blur(10px); z-index: 10;
+  padding: 24px 32px; background: var(--glass); backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;
+  z-index: 10;
 }
-.main-hdr h2 { font-size: 18px; font-weight: 600; }
-.sys-stats { display: flex; gap: 16px; }
-.stat-item { font-size: 12px; color: var(--muted); }
-.stat-item span { color: var(--text); font-weight: 600; }
+#view-title { font-size: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
+.sys-stats { display: flex; align-items: center; gap: 20px; }
+.stat-item { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+.stat-item span { color: var(--text); font-weight: 600; font-family: var(--font-mono); margin-left: 4px; }
 
-.content-area { flex: 1; overflow-y: auto; padding: 24px; display: none; }
-.content-area.active { display: block; animation: fadeIn 0.3s ease; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.content-area {
+  flex: 1; padding: 32px; overflow-y: auto; display: none;
+  animation: fadeIn 0.3s ease;
+}
+.content-area.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-/* ── Cards & Panels ─────────────────────────────────────── */
+/* ── Cards & UI Components ──────────────────────────────── */
 .card {
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
-  padding: 20px; margin-bottom: 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px;
+  padding: 24px; margin-bottom: 24px; position: relative; overflow: hidden;
+  box-shadow: 0 4px 30px rgba(0,0,0,0.2);
 }
-.card h3 { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; }
+.card::before {
+  content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%;
+  background: var(--accent); opacity: 0.3;
+}
+.card h3 {
+  font-size: 14px; font-weight: 700; margin-bottom: 20px; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.15em; display: flex; align-items: center; gap: 10px;
+}
+.card h3::after {
+  content: ''; flex: 1; height: 1px; background: var(--border); margin-left: 10px;
+}
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 
-/* Tables */
-table { width: 100%; border-collapse: collapse; }
-th { text-align: left; padding: 8px 12px; font-size: 11px; color: var(--muted); text-transform: uppercase; border-bottom: 2px solid var(--border); }
 td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
 tr:hover td { background: var(--accent-soft); }
 
@@ -230,13 +249,17 @@ tr:hover td { background: var(--accent-soft); }
 
 <main>
   <div class="main-hdr">
-    <h2 id="view-title">System Status</h2>
+    <div style="display:flex; flex-direction:column">
+      <h2 id="view-title" style="margin-bottom: 4px; font-family: var(--font-tactical); letter-spacing: 0.1em">SYSTEM STATUS</h2>
+      <div style="height: 2px; width: 80px; background: var(--accent); opacity: 0.6; margin-bottom: 2px"></div>
+      <div style="height: 2px; width: 40px; background: var(--accent); opacity: 0.3"></div>
+    </div>
     <div class="sys-stats">
-      <div class="stat-item">uptime <span id="uptime">—</span></div>
-      <div class="stat-item">connections <span id="conn-cnt">—</span></div>
-      <div class="stat-item">providers <span id="providers">—</span></div>
-      <div id="conn-status" style="font-size:11px;color:var(--muted)">connecting…</div>
-      <div class="status-dot" id="dot" style="width:8px;height:8px;border-radius:50%;background:var(--green);margin-left:8px"></div>
+      <div class="stat-item">UPTIME <span id="uptime">—</span></div>
+      <div class="stat-item">CONNECTIONS <span id="conn-cnt">—</span></div>
+      <div class="stat-item">PROVIDERS <span id="providers">—</span></div>
+      <div id="conn-status" style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em">CONNECTING…</div>
+      <div class="status-dot" id="dot" style="width:8px;height:8px;border-radius:2px;background:var(--green);margin-left:8px;box-shadow:0 0 10px var(--green)"></div>
     </div>
   </div>
 
@@ -310,23 +333,35 @@ tr:hover td { background: var(--accent-soft); }
   </div>
 
   <div class="content-area" id="tab-agents">
-    <div class="card" style="margin-bottom: 32px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <h3>⚙️ Global Defaults</h3>
-        <button class="btn primary" onclick="openDefaultsModal()">Edit Defaults</button>
+    <div class="card" style="margin-bottom: 32px; border-top: 2px solid var(--accent)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <h3 style="margin-bottom:0">⚙️ GLOBAL CONFIGURATION</h3>
+        <button class="btn primary" onclick="openDefaultsModal()">MODIFY DEFAULTS</button>
       </div>
-      <div class="grid-2" id="defaults-grid" style="font-size:12px">
-        <div><span style="color:var(--muted)">Primary model:</span> <span id="def-model" style="color:var(--text);font-family:var(--font-mono)">...</span></div>
-        <div><span style="color:var(--muted)">Tools:</span> <span id="def-tools" style="color:var(--text)">...</span></div>
-        <div><span style="color:var(--muted)">Sandbox mode:</span> <span id="def-sandbox" style="color:var(--text)">...</span></div>
-        <div><span style="color:var(--muted)">Timeout:</span> <span id="def-timeout" style="color:var(--text)">...</span></div>
+      <div class="grid-2" id="defaults-grid" style="font-size:11px; letter-spacing: 0.05em">
+        <div style="padding: 8px; border-left: 2px solid var(--border)">
+          <div style="color:var(--muted); font-size: 9px; text-transform: uppercase; margin-bottom: 4px">Primary Model</div>
+          <div id="def-model" style="color:var(--text);font-family:var(--font-mono); font-weight: 600">...</div>
+        </div>
+        <div style="padding: 8px; border-left: 2px solid var(--border)">
+          <div style="color:var(--muted); font-size: 9px; text-transform: uppercase; margin-bottom: 4px">Active Tools</div>
+          <div id="def-tools" style="color:var(--text); font-weight: 600">...</div>
+        </div>
+        <div style="padding: 8px; border-left: 2px solid var(--border)">
+          <div style="color:var(--muted); font-size: 9px; text-transform: uppercase; margin-bottom: 4px">Sandbox Enforcement</div>
+          <div id="def-sandbox" style="color:var(--text); font-weight: 600">...</div>
+        </div>
+        <div style="padding: 8px; border-left: 2px solid var(--border)">
+          <div style="color:var(--muted); font-size: 9px; text-transform: uppercase; margin-bottom: 4px">Execution Timeout</div>
+          <div id="def-timeout" style="color:var(--text); font-weight: 600">...</div>
+        </div>
       </div>
       <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px">
-        <h4 style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px">Budget Limits</h4>
-        <div class="grid-2" style="font-size:12px">
-          <div><span style="color:var(--muted)">Daily Tokens:</span> <span id="def-daily" style="color:var(--text)">...</span></div>
-          <div><span style="color:var(--muted)">Monthly Tokens:</span> <span id="def-monthly" style="color:var(--text)">...</span></div>
-          <div><span style="color:var(--muted)">Monthly Cost:</span> <span id="def-cost" style="color:var(--text)">...</span></div>
+        <h4 style="font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:0.2em;margin-bottom:16px; opacity: 0.8">BUDGETARY CONSTRAINTS</h4>
+        <div class="grid-2" style="font-size:11px">
+          <div><span style="color:var(--muted); text-transform: uppercase; font-size: 9px">Daily Token Quota:</span> <span id="def-daily" style="color:var(--text); font-family: var(--font-mono)">...</span></div>
+          <div><span style="color:var(--muted); text-transform: uppercase; font-size: 9px">Monthly Token Quota:</span> <span id="def-monthly" style="color:var(--text); font-family: var(--font-mono)">...</span></div>
+          <div><span style="color:var(--muted); text-transform: uppercase; font-size: 9px">Monthly Cost Cap:</span> <span id="def-cost" style="color:var(--text); font-family: var(--font-mono)">...</span></div>
         </div>
       </div>
     </div>
