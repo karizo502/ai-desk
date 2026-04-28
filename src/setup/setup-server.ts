@@ -142,8 +142,8 @@ export class SetupServer {
       this.json(res, {
         ok:           true,
         token,
-        dashboardUrl: `http://${bind === '0.0.0.0' ? '127.0.0.1' : bind}:${port}/dashboard`,
-        chatUrl:      `http://${bind === '0.0.0.0' ? '127.0.0.1' : bind}:${port}/dashboard#chat`,
+        dashboardUrl: `http://${bind === '0.0.0.0' ? '127.0.0.1' : bind}:${port}/login`,
+        chatUrl:      `http://${bind === '0.0.0.0' ? '127.0.0.1' : bind}:${port}/#chat`,
       });
 
       // Close setup server, then start the real gateway

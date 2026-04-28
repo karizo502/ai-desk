@@ -219,17 +219,14 @@ input::placeholder{color:var(--muted)}
     <div class="card-title">✅ Gateway Running!</div>
     <div class="card-sub">
       Your auth token is shown below — save it now.<br>
-      It won't be shown again (you can create more with <code>ai-desk token create</code>).
+      Access your gateway at: <strong style="color:var(--accent)" id="final-url-text">http://127.0.0.1:18789/</strong>
     </div>
     <div class="token-box" id="token-display" onclick="copyToken()">
       <span id="token-val">—</span>
-      <div class="copy-hint">click to copy</div>
+      <div class="copy-hint">click to copy token</div>
     </div>
-    <button class="btn primary full" id="btn-go-chat" onclick="openChat()">
-      💬 Open Chat →
-    </button>
-    <button class="btn full" style="margin-top:8px" id="btn-go-dash" onclick="openDash()">
-      📊 Open Dashboard
+    <button class="btn primary full" id="btn-go-login" onclick="openDash()">
+      🔑 Go to Login →
     </button>
   </div>
 
@@ -380,8 +377,10 @@ async function launch() {
     tickStep(steps[steps.length - 1].id);
 
     savedToken = data.token ?? '';
-    chatUrl    = data.chatUrl ?? 'http://127.0.0.1:' + port + '/dashboard#chat';
-    dashUrl    = data.dashboardUrl ?? 'http://127.0.0.1:' + port + '/dashboard';
+    chatUrl    = data.chatUrl ?? 'http://127.0.0.1:' + port + '/#chat';
+    dashUrl    = data.dashboardUrl ?? 'http://127.0.0.1:' + port + '/';
+
+    document.getElementById('final-url-text').textContent = dashUrl;
 
     // Wait for gateway to bind before showing done
     await sleep(800);
@@ -398,7 +397,8 @@ function openChat() {
   window.location.href = chatUrl + '&tok=' + encodeURIComponent(savedToken);
 }
 function openDash() {
-  window.location.href = dashUrl;
+  // Append token to hash for auto-login if possible
+  window.location.href = dashUrl + '#tok=' + encodeURIComponent(savedToken);
 }
 
 function copyToken() {

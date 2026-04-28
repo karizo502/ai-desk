@@ -33,15 +33,15 @@ export function getDashboardHtml(): string {
 /* Theme Dark (Default) */
 .theme-dark {
   --bg: #0c0c0c;
-  --bg-sidebar: #080808;
+  --bg-sidebar: #0c0c0c;
   --bg-card: #121212;
-  --bg-input: #181818;
-  --border: rgba(200, 144, 72, 0.15);
+  --bg-input: #151515;
+  --border: rgba(200, 144, 72, 0.2);
   --text: #f4efe5;
-  --muted: #888;
+  --muted: #666;
   --accent: #c89048;
-  --accent-soft: rgba(200, 144, 72, 0.12);
-  --glass: rgba(12, 12, 12, 0.9);
+  --accent-soft: rgba(200, 144, 72, 0.1);
+  --glass: rgba(12, 12, 12, 0.95);
   --green: #4ade80;
   --red: #f87171;
   --yellow: #facc15;
@@ -78,34 +78,6 @@ body {
   transition: background 0.3s ease;
 }
 
-/* ── Login Screen ───────────────────────────────────────── */
-#login-screen {
-  position: fixed; inset: 0; background: var(--bg); z-index: 1000;
-  display: flex; align-items: center; justify-content: center;
-  backdrop-filter: blur(20px);
-}
-.login-card {
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px;
-  padding: 40px; width: 100%; max-width: 400px; text-align: center;
-  box-shadow: var(--shadow); animation: slideUp 0.5s ease;
-}
-@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-.login-logo { font-size: 32px; font-weight: 900; margin-bottom: 8px; letter-spacing: 4px; font-family: var(--font-tactical); text-transform: uppercase; }
-.login-logo span { color: var(--accent); }
-.login-subtitle { color: var(--muted); font-size: 11px; margin-bottom: 24px; text-transform: uppercase; letter-spacing: 0.2em; }
-.login-input {
-  width: 100%; background: var(--bg-input); border: 1px solid var(--border);
-  color: var(--text); padding: 14px 16px; border-radius: 4px; margin-bottom: 16px;
-  font-family: var(--font-mono); font-size: 13px; outline: none; transition: var(--transition);
-  text-align: center;
-}
-.login-input:focus { border-color: var(--accent); box-shadow: 0 0 15px var(--accent-soft); }
-.login-btn {
-  width: 100%; background: var(--accent); color: #000; border: none; padding: 14px;
-  border-radius: 4px; font-weight: 700; cursor: pointer; transition: var(--transition);
-  text-transform: uppercase; letter-spacing: 0.1em;
-}
-.login-btn:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 5px 15px var(--accent-soft); }
 
 /* ── Sidebar ───────────────────────────────────────────── */
 aside {
@@ -113,9 +85,18 @@ aside {
   display: flex; flex-direction: column; height: 100%; transition: var(--transition);
   box-shadow: 5px 0 20px rgba(0,0,0,0.5);
 }
-.sidebar-hdr { padding: 32px 24px; }
-.sidebar-logo { font-size: 24px; font-weight: 900; letter-spacing: 2px; font-family: var(--font-tactical); text-transform: uppercase; }
-.sidebar-logo span { color: var(--accent); }
+.sidebar-hdr { padding: 40px 24px; text-align: center; }
+.sidebar-logo { 
+  display: inline-flex; flex-direction: column; align-items: center; gap: 16px;
+  font-family: var(--font-tactical);
+}
+.logo-box {
+  width: 64px; height: 64px; background: var(--accent); color: #0c0c0c;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 48px; font-weight: 700; border-radius: 2px;
+}
+.logo-text { font-size: 24px; letter-spacing: 6px; color: var(--text); }
+.logo-ver { font-family: var(--font-mono); font-size: 9px; color: var(--accent); opacity: 0.6; letter-spacing: 2px; margin-top: -8px; }
 .nav-group { flex: 1; padding: 0 12px; }
 .nav-tab {
   width: 100%; background: none; border: none; color: var(--muted); padding: 12px 16px;
@@ -148,14 +129,14 @@ main { flex: 1; display: flex; flex-direction: column; overflow: hidden; positio
   border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;
   z-index: 10;
 }
-#view-title { font-size: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
+#view-title { font-family: var(--font-tactical); font-size: 24px; letter-spacing: 4px; text-transform: uppercase; margin: 0; }
 .sys-stats { display: flex; align-items: center; gap: 20px; }
 .stat-item { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
 .stat-item span { color: var(--text); font-weight: 600; font-family: var(--font-mono); margin-left: 4px; }
 
 .content-area {
-  flex: 1; padding: 32px; overflow-y: auto; display: none;
-  animation: fadeIn 0.3s ease;
+  flex: 1; padding: 40px; overflow-y: auto; display: none;
+  animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .content-area.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
@@ -171,8 +152,9 @@ main { flex: 1; display: flex; flex-direction: column; overflow: hidden; positio
   background: var(--accent); opacity: 0.3;
 }
 .card h3 {
-  font-size: 14px; font-weight: 700; margin-bottom: 20px; color: var(--accent);
-  text-transform: uppercase; letter-spacing: 0.15em; display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-tactical); font-size: 18px; letter-spacing: 2px;
+  margin-bottom: 20px; color: var(--accent);
+  text-transform: uppercase; display: flex; align-items: center; gap: 10px;
 }
 .card h3::after {
   content: ''; flex: 1; height: 1px; background: var(--border); margin-left: 10px;
@@ -214,27 +196,37 @@ tr:hover td { background: var(--accent-soft); }
 .btn.primary { background: var(--accent); color: #0a0a0a; border: none; font-weight: 700; }
 .btn.primary:hover { opacity: 0.9; transform: translateY(-1px); }
 .btn.danger { border-color: var(--red); color: var(--red); }
+
+/* Agents Grid */
+#agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+.agent-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; transition: var(--transition); position: relative; overflow: hidden; }
+.agent-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.3); border-color: var(--accent); }
+.agent-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.agent-card-id { font-size: 16px; font-weight: 700; color: var(--text); }
+.agent-card-def { font-size: 10px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; }
+.agent-card-row { font-size: 12px; color: var(--muted); margin-bottom: 8px; display: flex; justify-content: space-between; }
+.agent-card-row span { color: var(--text); font-family: var(--font-mono); }
+.agent-card-actions { margin-top: 20px; display: flex; gap: 8px; border-top: 1px solid var(--border); padding-top: 16px; }
 </style>
+
 </head>
 <body class="theme-dark">
-<div id="login-screen" style="display:none">
-  <div class="login-card">
-    <div class="login-logo">AI_<span>DESK</span></div>
-    <div class="login-subtitle">Security-Hardened AI Gateway</div>
-    <input type="password" id="login-token" class="login-input" placeholder="Enter Auth Token…" autocomplete="off">
-    <button class="login-btn" onclick="tryLogin()">Login</button>
-    <div id="login-err" style="color:var(--red);font-size:12px;margin-top:12px"></div>
-  </div>
-</div>
 
 <aside>
   <div class="sidebar-hdr">
-    <div class="sidebar-logo">AI_<span>DESK</span></div>
+    <div class="sidebar-logo">
+      <div class="logo-box">A</div>
+      <div class="logo-text">AI_DESK</div>
+      <div class="logo-ver">CONSOLE · v0.4</div>
+    </div>
   </div>
   <div class="nav-group">
     <button class="nav-tab active" id="ntab-status" onclick="switchTab('status')"><span class="icon">📊</span> Status</button>
     <button class="nav-tab" id="ntab-agents" onclick="switchTab('agents')"><span class="icon">⚙️</span> Agents</button>
     <button class="nav-tab" id="ntab-teams" onclick="switchTab('teams')"><span class="icon">👥</span> Teams</button>
+    <button class="nav-tab" id="ntab-skills" onclick="switchTab('skills')"><span class="icon">🎯</span> Skills</button>
+    <button class="nav-tab" id="ntab-mcp" onclick="switchTab('mcp')"><span class="icon">🔌</span> MCP</button>
+    <button class="nav-tab" id="ntab-messaging" onclick="switchTab('messaging')"><span class="icon">🤖</span> Messaging</button>
     <button class="nav-tab" id="ntab-chat" onclick="switchTab('chat')"><span class="icon">💬</span> Chat</button>
     <button class="nav-tab" id="ntab-creds" onclick="switchTab('creds')"><span class="icon">🔑</span> Credentials</button>
   </div>
@@ -288,7 +280,7 @@ tr:hover td { background: var(--accent-soft); }
       </div>
       <div class="card">
         <h3>🎯 Skills</h3>
-        <table id="skills-tbl">
+        <table id="skills-tbl-stat">
           <thead><tr><th>Name</th><th>Version</th><th>Status</th></tr></thead>
           <tbody><tr><td colspan="3" class="empty">loading…</td></tr></tbody>
         </table>
@@ -296,14 +288,14 @@ tr:hover td { background: var(--accent-soft); }
     </div>
     <div class="card">
       <h3>🔌 MCP Servers</h3>
-      <table id="mcp-tbl">
+      <table id="mcp-tbl-stat">
         <thead><tr><th>Server</th><th>Tools</th><th>Status</th></tr></thead>
         <tbody><tr><td colspan="3" class="empty">loading…</td></tr></tbody>
       </table>
     </div>
     <div class="card">
       <h3>💬 Messaging</h3>
-      <table id="msg-tbl">
+      <table id="msg-tbl-stat">
         <thead><tr><th>Platform</th><th>Status</th></tr></thead>
         <tbody><tr><td colspan="2" class="empty">loading…</td></tr></tbody>
       </table>
@@ -314,7 +306,39 @@ tr:hover td { background: var(--accent-soft); }
     </div>
   </div>
 
+
+  <!-- Agents -->
+  <div class="content-area" id="tab-agents">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px">
+      <h3 style="margin:0">⚙️ AGENT MANAGEMENT</h3>
+      <div style="display:flex; gap:12px">
+        <button class="btn" onclick="openDefaultsModal()">Global Defaults</button>
+        <button class="btn primary" onclick="openAgentModal(null)">+ Add Agent</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:32px">
+      <h3>Global Defaults <span style="font-size:10px; color:var(--muted); margin-left:8px; text-transform:none">(fallback values)</span></h3>
+      <div class="grid-2">
+        <div style="display:flex; flex-direction:column; gap:8px">
+          <div class="stat-item">Model <span id="def-model">—</span></div>
+          <div class="stat-item">Tools <span id="def-tools">—</span></div>
+          <div class="stat-item">Sandbox <span id="def-sandbox">—</span></div>
+          <div class="stat-item">Timeout <span id="def-timeout">—</span></div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px">
+          <div class="stat-item">Daily Tokens <span id="def-daily">—</span></div>
+          <div class="stat-item">Monthly Tokens <span id="def-monthly">—</span></div>
+          <div class="stat-item">Monthly Cost <span id="def-cost">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="agents-grid"></div>
+  </div>
+
   <!-- Chat -->
+
   <div class="content-area" id="tab-chat">
     <div id="chat-toolbar" style="padding:16px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center">
       <label style="font-size:12px;color:var(--muted)">Agent</label>
@@ -333,15 +357,66 @@ tr:hover td { background: var(--accent-soft); }
   </div>
 
   <div class="content-area" id="tab-teams">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <h3>👥 Teams & Roles</h3>
-      <div style="display:flex;gap:8px">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px">
+      <h3 style="margin:0">👥 TEAMS & ROLES</h3>
+      <div style="display:flex; gap:12px">
         <button class="btn" onclick="openRoleModal(null)">+ New Role</button>
         <button class="btn primary" onclick="openTeamModal(null)">+ New Team</button>
       </div>
     </div>
-    <div id="roles-grid" class="grid-2" style="margin-bottom:24px"></div>
-    <div id="teams-grid" style="display:flex;flex-direction:column;gap:16px"></div>
+    <div class="card">
+      <h3>Roles</h3>
+      <div id="roles-grid" class="grid-2"></div>
+    </div>
+    <div class="card">
+      <h3>Teams</h3>
+      <div id="teams-grid" style="display:flex;flex-direction:column;gap:16px"></div>
+    </div>
+  </div>
+
+  <!-- Skills -->
+  <div class="content-area" id="tab-skills">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px">
+      <h3 style="margin:0">🎯 SKILL MANAGEMENT</h3>
+      <div style="display:flex; gap:12px">
+        <button class="btn" onclick="refreshSkills()">Refresh Skills</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Installed Skills</h3>
+      <table id="skills-tbl" style="width:100%">
+        <thead><tr><th>Name</th><th>Version</th><th>Description</th><th>Status</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MCP -->
+  <div class="content-area" id="tab-mcp">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px">
+      <h3 style="margin:0">🔌 MCP SERVERS</h3>
+    </div>
+    <div class="card">
+      <h3>Connected Servers</h3>
+      <table id="mcp-tbl" style="width:100%">
+        <thead><tr><th>Name</th><th>Tools</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Messaging -->
+  <div class="content-area" id="tab-messaging">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px">
+      <h3 style="margin:0">🤖 MESSAGING ADAPTERS</h3>
+    </div>
+    <div class="card">
+      <h3>Platform Status</h3>
+      <table id="msg-tbl" style="width:100%">
+        <thead><tr><th>Platform</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
 
   <div class="content-area" id="tab-creds">
@@ -523,8 +598,6 @@ tr:hover td { background: var(--accent-soft); }
       <div id="run-msg" style="margin-top:8px;font-size:11px;min-height:16px;white-space:pre-wrap"></div>
     </div>
   </div>
-</div>
-
 
   <!-- ── Edit Defaults modal ────────────────────────────── -->
   <div class="modal-bg" id="defaults-modal-bg" onclick="if(event.target===this)closeDefaultsModal()">
@@ -689,11 +762,10 @@ tr:hover td { background: var(--accent-soft); }
     <option value="google/gemini-2.0-flash-001">
     <option value="google/gemini-2.5-pro-preview-03-25">
   </datalist>
-</div>
 
 <script>
 const $ = id => document.getElementById(id);
-const esc = s => s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') : '';
+const esc = s => s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') : '';
 const badge = (text, cls) => \`<span class="badge \${cls || ''}">\${text}</span>\`;
 const getHashParams = () => {
   const params = {};
@@ -711,36 +783,16 @@ let authToken = localStorage.getItem('ai_desk_token') || '';
 
 function checkLogin() {
   if (!authToken) {
-    $('login-screen').style.display = 'flex';
+    window.location.href = '/login';
   } else {
-    $('login-screen').style.display = 'none';
     initApp();
   }
 }
 
-async function tryLogin() {
-  const t = $('login-token').value.trim();
-  if (!t) return;
-  const err = $('login-err');
-  err.textContent = 'verifying…';
-  try {
-    const r = await fetch('/dashboard/api/snapshot?token=' + encodeURIComponent(t));
-    if (r.ok) {
-      authToken = t;
-      localStorage.setItem('ai_desk_token', t);
-      $('login-screen').style.display = 'none';
-      initApp();
-    } else {
-      err.textContent = 'Invalid token';
-    }
-  } catch (e) {
-    err.textContent = 'Connection error';
-  }
-}
 
 function logout() {
   localStorage.removeItem('ai_desk_token');
-  location.reload();
+  window.location.href = '/login';
 }
 
 function toggleTheme() {
@@ -773,12 +825,24 @@ function initApp() {
 //  Tab navigation
 // ═══════════════════════════════════════════════════════════════
 function switchTab(name) {
-  const titles = { status: 'System Status', agents: 'Agent Management', teams: 'Teams & Roles', chat: 'AI Chat', creds: 'Credentials' };
+  const titles = { 
+    status: 'System Status', 
+    agents: 'Agent Management', 
+    teams: 'Teams & Roles', 
+    skills: 'Skill Management',
+    mcp: 'MCP Servers',
+    messaging: 'Messaging Adapters',
+    chat: 'AI Chat', 
+    creds: 'Credentials' 
+  };
   $('view-title').textContent = titles[name] || name;
   
-  ['status','agents','teams','chat','creds'].forEach(t => {
-    $('tab-' + t).classList.toggle('active', t === name);
-    if ($('ntab-' + t)) $('ntab-' + t).classList.toggle('active', t === name);
+  ['status','agents','teams','skills','mcp','messaging','chat','creds'].forEach(t => {
+    const content = $('tab-' + t);
+    if (content) content.classList.toggle('active', t === name);
+    
+    const ntab = $('ntab-' + t);
+    if (ntab) ntab.classList.toggle('active', t === name);
   });
   if (name === 'agents') loadAgents();
   if (name === 'teams')  loadTeams();
@@ -816,7 +880,16 @@ function connect() {
     appendEvent(JSON.parse(e.data));
   });
 
-  es.onerror = () => {
+  es.onerror = async () => {
+    // If it's an auth error, fetch will confirm it (EventSource doesn't show status)
+    try {
+      const r = await fetch(url);
+      if (r.status === 401) {
+        logout();
+        return;
+      }
+    } catch { /* network error, continue to retry */ }
+
     $('conn-status').textContent = 'reconnecting in ' + (reconnectDelay/1000) + 's…';
     $('dot').classList.add('offline');
     es.close();
@@ -895,38 +968,70 @@ function renderSnapshot(s) {
   }
 
   // Skills
-  const sb = $('skills-tbl').querySelector('tbody');
+  const sbStat = $('skills-tbl-stat').querySelector('tbody');
+  const sbMain = $('skills-tbl').querySelector('tbody');
   if (!s.skills || s.skills.length === 0) {
-    sb.innerHTML = '<tr><td colspan="3" class="empty">no skills found</td></tr>';
+    const empty = '<tr><td colspan="4" class="empty">no skills found</td></tr>';
+    if (sbStat) sbStat.innerHTML = empty;
+    if (sbMain) sbMain.innerHTML = empty;
   } else {
-    sb.innerHTML = s.skills.map(sk => '<tr>'
+    const rowsStat = s.skills.map(sk => '<tr>'
       + '<td>' + esc(sk.name) + '</td>'
       + '<td style="color:var(--muted)">' + esc(sk.version || '') + '</td>'
       + '<td>' + badge(sk.enabled ? 'enabled' : 'disabled', sk.enabled ? 'green' : 'muted') + '</td>'
       + '</tr>').join('');
+    const rowsMain = s.skills.map(sk => '<tr>'
+      + '<td>' + esc(sk.name) + '</td>'
+      + '<td>' + esc(sk.version || '') + '</td>'
+      + '<td style="color:var(--muted); font-size:12px">' + esc(sk.description || '') + '</td>'
+      + '<td>' + badge(sk.enabled ? 'enabled' : 'disabled', sk.enabled ? 'green' : 'muted') + '</td>'
+      + '</tr>').join('');
+    if (sbStat) sbStat.innerHTML = rowsStat;
+    if (sbMain) sbMain.innerHTML = rowsMain;
   }
 
   // MCP Servers
-  const mb = $('mcp-tbl').querySelector('tbody');
+  const mbStat = $('mcp-tbl-stat').querySelector('tbody');
+  const mbMain = $('mcp-tbl').querySelector('tbody');
   if (!s.mcpServers || s.mcpServers.length === 0) {
-    mb.innerHTML = '<tr><td colspan="3" class="empty">no MCP servers</td></tr>';
+    const empty = '<tr><td colspan="3" class="empty">no MCP servers</td></tr>';
+    if (mbStat) mbStat.innerHTML = empty;
+    if (mbMain) mbMain.innerHTML = empty;
   } else {
-    mb.innerHTML = s.mcpServers.map(m => '<tr>'
+    const rowsStat = s.mcpServers.map(m => '<tr>'
       + '<td>' + esc(m.name) + '</td>'
       + '<td>' + (m.tools || 0) + '</td>'
       + '<td>' + badge(m.ready ? 'ready' : 'error', m.ready ? 'green' : 'red') + '</td>'
       + '</tr>').join('');
+    const rowsMain = s.mcpServers.map(m => '<tr>'
+      + '<td>' + esc(m.name) + '</td>'
+      + '<td>' + (m.tools || 0) + '</td>'
+      + '<td>' + badge(m.ready ? 'ready' : 'error', m.ready ? 'green' : 'red') + '</td>'
+      + '<td><button class="btn" style="font-size:10px" data-name="' + esc(m.name) + '" onclick="refreshMcp(this.dataset.name)">Refresh</button></td>'
+      + '</tr>').join('');
+    if (mbStat) mbStat.innerHTML = rowsStat;
+    if (mbMain) mbMain.innerHTML = rowsMain;
   }
 
   // Messaging
-  const msgb = $('msg-tbl').querySelector('tbody');
+  const msgbStat = $('msg-tbl-stat').querySelector('tbody');
+  const msgbMain = $('msg-tbl').querySelector('tbody');
   if (!s.messaging || s.messaging.length === 0) {
-    msgb.innerHTML = '<tr><td colspan="2" class="empty">no messaging adapters</td></tr>';
+    const empty = '<tr><td colspan="2" class="empty">no messaging adapters</td></tr>';
+    if (msgbStat) msgbStat.innerHTML = empty;
+    if (msgbMain) msgbMain.innerHTML = empty;
   } else {
-    msgb.innerHTML = s.messaging.map(m => '<tr>'
+    const rowsStat = s.messaging.map(m => '<tr>'
       + '<td>' + esc(m.platform) + '</td>'
       + '<td>' + badge(m.running ? 'connected' : 'offline', m.running ? 'green' : 'red') + '</td>'
       + '</tr>').join('');
+    const rowsMain = s.messaging.map(m => '<tr>'
+      + '<td>' + esc(m.platform) + '</td>'
+      + '<td>' + badge(m.running ? 'connected' : 'offline', m.running ? 'green' : 'red') + '</td>'
+      + '<td><button class="btn" style="font-size:10px" onclick="switchTab(\'creds\')">Configure</button></td>'
+      + '</tr>').join('');
+    if (msgbStat) msgbStat.innerHTML = rowsStat;
+    if (msgbMain) msgbMain.innerHTML = rowsMain;
   }
 }
 

@@ -11,6 +11,7 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { getDashboardHtml } from './dashboard-html.js';
+import { getLoginHtml } from './login-html.js';
 import { CredentialRoutes } from './credential-routes.js';
 import { AgentRoutes, type ReloadFn } from './agent-routes.js';
 import { TeamRoutes } from './team-routes.js';
@@ -129,7 +130,14 @@ export class DashboardServer {
   handle(req: IncomingMessage, res: ServerResponse): boolean {
     const url = (req.url ?? '').split('?')[0];
 
-    // GET /dashboard is public (it serves the SPA which has the login overlay)
+    // GET /login is public
+    if (url === '/login' || url === '/login/') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(getLoginHtml());
+      return true;
+    }
+
+    // GET /dashboard is public (it serves the SPA which redirects to /login if no localStorage)
     if (url === '/dashboard' || url === '/dashboard/') {
       res.writeHead(200, {
         'Content-Type': 'text/html; charset=utf-8',
@@ -186,16 +194,16 @@ export class DashboardServer {
       token = (req.headers['x-ai-desk-token'] as string) ?? '';
     }
 
-    if (!token) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Authentication required' }));
-      return false;
-    }
+    if (!token || !this.authManager.authenticateToken(token, remoteAddress).success) {
+      const accept = req.headers.accept || '';
+      if (req.method === 'GET' && accept.includes('text/html') && !url.pathname.includes('/api/')) {
+        res.writeHead(302, { Location: '/login' });
+        res.end();
+        return false;
+      }
 
-    const result = this.authManager.authenticateToken(token, remoteAddress);
-    if (!result.success) {
       res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Invalid or expired token' }));
+      res.end(JSON.stringify({ error: !token ? 'Authentication required' : 'Invalid or expired token' }));
       return false;
     }
 

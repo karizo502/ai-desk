@@ -211,8 +211,18 @@ export class GatewayServer {
     });
 
     this.wss.on('connection', (ws, req) => this.handleConnection(ws, req));
+    this.wss.on('error', (err) => { console.error('❌ WebSocket Server Error:', err.message); });
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      this.httpServer.once('error', (err: any) => {
+        if (err.code === 'EADDRINUSE') {
+          console.error(`❌ Port ${port} is already in use. Please stop the other instance first.`);
+        } else {
+          console.error('❌ Gateway Server Error:', err.message);
+        }
+        reject(err);
+      });
+
       this.httpServer.listen(port, bind, async () => {
         // Initialise skill registry (discovers skills/*.skill.json)
         await this.skillRegistry.init();
@@ -326,7 +336,7 @@ export class GatewayServer {
         console.log(`│  Providers: ${(availableProviders.join(',') || 'none').padEnd(33)}│`);
         console.log(`│  Cache:     ${(this.config.cache?.enabled ? 'on' : 'off').padEnd(33)}│`);
         console.log('├─────────────────────────────────────────────┤');
-        console.log(`│  Dashboard: http://${bind}:${port}/dashboard`.padEnd(46) + '│');
+        console.log(`│  Dashboard: http://${bind}:${port}/login`.padEnd(46) + '│');
         console.log('├─────────────────────────────────────────────┤');
         console.log('│  🔒 Auth mandatory | 🛡️ Sandbox always-on   │');
         console.log('└─────────────────────────────────────────────┘');
@@ -728,6 +738,13 @@ export class GatewayServer {
     // Dashboard routes (served before any other HTTP check)
     if (this.dashboardServer.handle(req, res)) return;
 
+    // Redirect root to login
+    if (req.url === '/' || req.url === '') {
+      res.writeHead(302, { Location: '/login' });
+      res.end();
+      return;
+    }
+
     if (req.url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
@@ -736,6 +753,12 @@ export class GatewayServer {
         connections: this.connections.size,
         providers: this.modelRouter.status().filter(p => p.available).map(p => p.name),
       }));
+      return;
+    }
+
+    if (req.method === 'GET') {
+      res.writeHead(302, { Location: '/login' });
+      res.end();
       return;
     }
 

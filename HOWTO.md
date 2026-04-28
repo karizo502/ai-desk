@@ -109,7 +109,7 @@ npm start
 │  Status:    🟢 Running                      │
 │  Bind:      127.0.0.1                       │
 │  Port:      18789                           │
-│  Dashboard: http://127.0.0.1:18789/dashboard│
+│  Dashboard: http://127.0.0.1:18789/login         │
 └─────────────────────────────────────────────┘
 🔑 Initial auth token generated:
    aid_xxxxxxxxxxxxxxxxxxxx
@@ -121,7 +121,7 @@ npm start
 npx tsx src/cli/index.ts agent test "สวัสดี บอกชื่อตัวเองหน่อย"
 
 # เช็ค dashboard ในเบราว์เซอร์
-# http://127.0.0.1:18789/dashboard
+# http://127.0.0.1:18789/login
 
 # เช็ค health endpoint
 curl http://127.0.0.1:18789/health

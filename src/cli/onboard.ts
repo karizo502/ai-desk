@@ -471,7 +471,7 @@ export async function runOnboard(opts: { installDaemon?: boolean } = {}): Promis
         // Give it a moment to bind the port
         await new Promise(r => setTimeout(r, 1200));
         ok(`Gateway started (PID ${child.pid})`);
-        info(`Dashboard: ${cyan(`http://127.0.0.1:${port}/dashboard`)}`);
+        info(`Dashboard: ${cyan(`http://127.0.0.1:${port}/login`)}`);
       } catch (e) {
         warn(`Could not start gateway: ${(e as Error).message}`);
         info(`Start manually with:  ${bold('npm start')}  or  ${bold('ai-desk gateway')}`);
@@ -502,7 +502,7 @@ export async function runOnboard(opts: { installDaemon?: boolean } = {}): Promis
   }
   print();
   print(`  ${bold('2. Open the dashboard')}`);
-  print(`     ${cyan(`http://127.0.0.1:${port}/dashboard`)}`);
+  print(`     ${cyan(`http://127.0.0.1:${port}/login`)}`);
   print();
   print(`  ${bold('3. Connect a client')}`);
   if (tokenLine) {
