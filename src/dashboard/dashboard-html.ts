@@ -198,15 +198,20 @@ tr:hover td { background: var(--accent-soft); }
 .btn.danger { border-color: var(--red); color: var(--red); }
 
 /* Agents Grid */
-#agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
-.agent-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; transition: var(--transition); position: relative; overflow: hidden; }
+#agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; }
+.agent-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; transition: var(--transition); position: relative; overflow: hidden; display: flex; flex-direction: column; }
 .agent-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.3); border-color: var(--accent); }
-.agent-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.agent-card-id { font-size: 16px; font-weight: 700; color: var(--text); }
-.agent-card-def { font-size: 10px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; }
+.agent-card-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.agent-avatar { width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--accent); object-fit: cover; background: var(--bg-input); flex-shrink: 0; }
+.agent-avatar-placeholder { width: 56px; height: 56px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; flex-shrink: 0; font-family: var(--font-tactical); }
+.agent-card-info { flex: 1; min-width: 0; }
+.agent-card-id { font-size: 16px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-card-name { font-size: 12px; color: var(--muted); margin-top: -2px; }
+.agent-card-def { font-size: 10px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; margin-top: 4px; }
+.agent-card-personality { font-size: 11px; color: var(--muted); font-style: italic; margin-bottom: 16px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; }
 .agent-card-row { font-size: 12px; color: var(--muted); margin-bottom: 8px; display: flex; justify-content: space-between; }
 .agent-card-row span { color: var(--text); font-family: var(--font-mono); }
-.agent-card-actions { margin-top: 20px; display: flex; gap: 8px; border-top: 1px solid var(--border); padding-top: 16px; }
+.agent-card-actions { margin-top: auto; display: flex; gap: 8px; border-top: 1px solid var(--border); padding-top: 16px; }
 </style>
 
 </head>
@@ -664,9 +669,23 @@ tr:hover td { background: var(--accent-soft); }
   <div class="modal-bg" id="agent-modal-bg" onclick="if(event.target===this)closeAgentModal()">
     <div class="modal">
       <h2 id="agent-modal-title">Add Agent</h2>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Agent ID <span style="color:var(--muted)">(alphanumeric, -, _)</span></label>
+          <input id="ag-id" placeholder="my-agent" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="form-field">
+          <label>Display Name</label>
+          <input id="ag-name" placeholder="Agent 007" autocomplete="off">
+        </div>
+      </div>
       <div class="form-field">
-        <label>Agent ID <span style="color:var(--muted)">(alphanumeric, -, _)</span></label>
-        <input id="ag-id" placeholder="my-agent" autocomplete="off" spellcheck="false">
+        <label>Avatar URL</label>
+        <input id="ag-avatar" placeholder="https://..." autocomplete="off">
+      </div>
+      <div class="form-field">
+        <label>Personality Prompt</label>
+        <textarea id="ag-personality" rows="2" placeholder="e.g. A helpful assistant with a witty personality..." style="width:100%; background:var(--bg-input); border:1px solid var(--border); color:var(--text); padding:8px; border-radius:4px; outline:none; resize:vertical"></textarea>
       </div>
       <div class="form-field">
         <label>Workspace path</label>
@@ -1028,7 +1047,7 @@ function renderSnapshot(s) {
     const rowsMain = s.messaging.map(m => '<tr>'
       + '<td>' + esc(m.platform) + '</td>'
       + '<td>' + badge(m.running ? 'connected' : 'offline', m.running ? 'green' : 'red') + '</td>'
-      + '<td><button class="btn" style="font-size:10px" onclick="switchTab(\'creds\')">Configure</button></td>'
+      + '<td><button class="btn" style="font-size:10px" onclick="switchTab(\\\'creds\\\')">Configure</button></td>'
       + '</tr>').join('');
     if (msgbStat) msgbStat.innerHTML = rowsStat;
     if (msgbMain) msgbMain.innerHTML = rowsMain;
@@ -1595,11 +1614,21 @@ function renderAgentCards(list) {
     const profile = a.tools?.profile || '';
     const sandbox = a.sandbox?.mode  || '';
     const aid = esc(a.id);
+    const name = a.name ? esc(a.name) : '';
+    const avatarHtml = a.avatarUrl 
+      ? \`<img src="\${esc(a.avatarUrl)}" class="agent-avatar" onerror="this.outerHTML='<div class=\\'agent-avatar-placeholder\\'>\${aid[0].toUpperCase()}</div>'">\`
+      : \`<div class="agent-avatar-placeholder">\${aid[0].toUpperCase()}</div>\`;
+
     return '<div class="agent-card">'
       + '<div class="agent-card-header">'
-      +   '<div class="agent-card-id">' + aid + '</div>'
-      +   (a.default ? '<div class="agent-card-def">★ default</div>' : '')
+      +   avatarHtml
+      +   '<div class="agent-card-info">'
+      +     '<div class="agent-card-id">' + aid + '</div>'
+      +     (name ? '<div class="agent-card-name">' + name + '</div>' : '')
+      +     (a.default ? '<div class="agent-card-def">★ default</div>' : '')
+      +   '</div>'
       + '</div>'
+      + (a.personality ? '<div class="agent-card-personality">' + esc(a.personality) + '</div>' : '')
       + (a.model?.primary ? '<div class="agent-card-row">model <span>' + esc(model) + '</span></div>' : '')
       + (a.workspace && a.workspace !== '.' ? '<div class="agent-card-row">workspace <span>' + esc(a.workspace) + '</span></div>' : '')
       + (profile  ? '<div class="agent-card-row">tools <span>' + esc(profile)  + '</span></div>' : '')
@@ -1681,6 +1710,9 @@ function openAgentModal(agent) {
   $('agent-modal-title').textContent = agent ? 'Edit Agent: ' + agent.id : 'Add Agent';
   $('ag-id').value        = agent ? agent.id        : '';
   $('ag-id').readOnly     = !!agent;
+  $('ag-name').value      = agent ? (agent.name || '') : '';
+  $('ag-avatar').value    = agent ? (agent.avatarUrl || '') : '';
+  $('ag-personality').value = agent ? (agent.personality || '') : '';
   $('ag-workspace').value = agent ? (agent.workspace || '.') : '.';
   $('ag-model').value     = agent?.model?.primary    || '';
   $('ag-compaction').value= agent?.model?.compaction || '';
@@ -1735,7 +1767,13 @@ async function saveAgent() {
   const id = $('ag-id').value.trim();
   if (!id) { showAgMsg('ag-msg', 'Agent ID is required', 'err'); return; }
 
-  const body = { id, workspace: $('ag-workspace').value.trim() || '.' };
+  const body = { 
+    id, 
+    name: $('ag-name').value.trim() || undefined,
+    avatarUrl: $('ag-avatar').value.trim() || undefined,
+    personality: $('ag-personality').value.trim() || undefined,
+    workspace: $('ag-workspace').value.trim() || '.' 
+  };
 
   const pm = $('ag-model').value.trim();
   const cmp = $('ag-compaction').value.trim();

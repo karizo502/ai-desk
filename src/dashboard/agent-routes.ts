@@ -187,7 +187,10 @@ function buildAgentConfig(data: Partial<AgentConfig> & { id?: string }): AgentCo
     workspace: (data.workspace ?? '.').trim() || '.',
   };
 
-  if (data.default) agent.default = true;
+  if (data.default)     agent.default     = true;
+  if (data.name)        agent.name        = data.name;
+  if (data.avatarUrl)   agent.avatarUrl   = data.avatarUrl;
+  if (data.personality) agent.personality = data.personality;
 
   if (data.model?.primary) {
     agent.model = { primary: data.model.primary };

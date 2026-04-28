@@ -169,7 +169,8 @@ export class AgentRuntime {
 
     // Tools available based on policy
     const tools = this.executor.visibleTools();
-    const sysPrompt = this.systemPromptProvider ? this.systemPromptProvider() : DEFAULT_SYSTEM_PROMPT;
+    const basePrompt = this.systemPromptProvider ? this.systemPromptProvider() : DEFAULT_SYSTEM_PROMPT;
+    const sysPrompt = agentCfg.personality ? agentCfg.personality + '\n\n' + basePrompt : basePrompt;
 
     let totalInput = 0;
     let totalOutput = 0;

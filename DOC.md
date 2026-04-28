@@ -193,4 +193,4 @@ AI_DESK ถูกสร้างขึ้นด้วยแนวคิด **Zer
     *   **วิธีแก้:** ใน `ai-desk.json` ให้เลือกใช้ `leadAgent` และ Agent ที่ทำหน้า Executor เป็นโมเดลเกรดสูงขึ้น (เช่น Claude 3.5 Sonnet หรือ GPT-4o) เพื่อการันตีการตอบสนองที่ถูกต้องต่อคำสั่งครับ
 
 ---
-*จัดทำเอกสารสำหรับ AI_DESK Framework รุ่นล่าสุด*
+*จัดทำเอกสารสำหรับ AI_DESK Framework รุ่นล่าสุด*  Stop-Process -Id (Get-NetTCPConnection -LocalPort 18789).OwningProcess -Force

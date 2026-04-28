@@ -33,8 +33,9 @@ export class ConfigManager {
     if (!existsSync(this.configPath)) return {};
     try {
       const text = readFileSync(this.configPath, 'utf-8');
+      // Safer comment removal: only strip // if preceded by whitespace or at start of line
       const clean = text
-        .replace(/\/\/.*$/gm, '')
+        .replace(/^\s*\/\/.*$/gm, '')
         .replace(/\/\*[\s\S]*?\*\//g, '');
       return JSON.parse(clean) as Record<string, unknown>;
     } catch {

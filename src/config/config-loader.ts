@@ -156,8 +156,8 @@ export function loadConfig(configPath?: string): {
   if (existsSync(resolvedPath)) {
     try {
       const raw = readFileSync(resolvedPath, 'utf-8');
-      // Strip JSON5 comments (simple line comment removal)
-      const cleaned = raw.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+      // Strip JSON5 comments (only if at start of line to avoid breaking URLs)
+      const cleaned = raw.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
       userConfig = JSON.parse(cleaned);
       source = resolvedPath;
     } catch (err) {

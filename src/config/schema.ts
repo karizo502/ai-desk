@@ -118,6 +118,9 @@ export const AgentConfigSchema = Type.Object({
   tools: Type.Optional(ToolPolicyConfigSchema),
   sandbox: Type.Optional(SandboxConfigSchema),
   budget: Type.Optional(BudgetPolicySchema),
+  name: Type.Optional(Type.String()),
+  avatarUrl: Type.Optional(Type.String()),
+  personality: Type.Optional(Type.String()),
 });
 export type AgentConfig = Static<typeof AgentConfigSchema>;
 
