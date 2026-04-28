@@ -13,30 +13,39 @@ const SKILL_SUFFIX = '.skill.json';
 const DEFAULT_SKILLS_DIR = 'skills';
 
 export class SkillLoader {
-  private skillsDir: string;
+  private skillsDirs: string[];
 
-  constructor(skillsDir?: string) {
-    this.skillsDir = resolve(skillsDir ?? DEFAULT_SKILLS_DIR);
+  constructor(dirs?: string | string[]) {
+    const input = Array.isArray(dirs) ? dirs : [dirs ?? DEFAULT_SKILLS_DIR];
+    this.skillsDirs = input.map(d => resolve(d));
   }
 
-  /** Discover and parse all *.skill.json files */
+  /** Discover and parse all *.skill.json files from all configured directories */
   async loadAll(): Promise<{ definition: SkillDefinition; filePath: string }[]> {
-    if (!existsSync(this.skillsDir)) return [];
-
-    const entries = await readdir(this.skillsDir, { withFileTypes: true });
     const results: { definition: SkillDefinition; filePath: string }[] = [];
+    const seen = new Set<string>();
 
-    for (const entry of entries) {
-      if (!entry.isFile() || !entry.name.endsWith(SKILL_SUFFIX)) continue;
-      const filePath = join(this.skillsDir, entry.name);
-      try {
-        const raw = await readFile(filePath, 'utf-8');
-        const json = JSON.parse(raw) as SkillDefinition;
-        const interpolated = interpolateEnv(json) as SkillDefinition;
-        this.validate(interpolated, filePath);
-        results.push({ definition: interpolated, filePath });
-      } catch (err) {
-        console.warn(`⚠️  Skill load error (${entry.name}): ${(err as Error).message}`);
+    for (const dir of this.skillsDirs) {
+      if (!existsSync(dir)) continue;
+
+      const entries = await readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isFile() || !entry.name.endsWith(SKILL_SUFFIX)) continue;
+        
+        // If multiple directories have the same skill file name, the first one wins
+        if (seen.has(entry.name)) continue;
+        seen.add(entry.name);
+
+        const filePath = join(dir, entry.name);
+        try {
+          const raw = await readFile(filePath, 'utf-8');
+          const json = JSON.parse(raw) as SkillDefinition;
+          const interpolated = interpolateEnv(json) as SkillDefinition;
+          this.validate(interpolated, filePath);
+          results.push({ definition: interpolated, filePath });
+        } catch (err) {
+          console.warn(`⚠️  Skill load error (${entry.name}): ${(err as Error).message}`);
+        }
       }
     }
 

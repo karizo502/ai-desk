@@ -39,6 +39,10 @@ import { parseMessage, createMessage, type ProtocolMessage } from './protocol.js
 import { v4 as uuid } from 'uuid';
 import type { ConnectionMeta } from '../shared/types.js';
 import type { AiDeskConfig } from '../config/schema.js';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __pkgSkills = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'skills');
 
 const APPROVAL_TIMEOUT_MS = 60_000;
 
@@ -159,7 +163,7 @@ export class GatewayServer {
     });
 
     this.orchestrator = new Orchestrator(this.agentRuntime);
-    this.skillRegistry = new SkillRegistry(dataDir);
+    this.skillRegistry = new SkillRegistry(dataDir, ['skills', __pkgSkills]);
 
     // Team coordinator — wired after start() reads config.teams
     if (config.teams && (config.teams.roles.length > 0 || config.teams.teams.length > 0)) {

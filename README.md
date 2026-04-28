@@ -31,31 +31,20 @@
 - **Node.js**: เวอร์ชัน 22 ขึ้นไป
 - **npm** (มาพร้อม Node.js)
 
-### ขั้นตอนการติดตั้ง
-
-1. **เปิดโฟลเดอร์โปรเจกต์**
+3. **ติดตั้งแบบ Global (แนะนำ) 🚀**
+   คุณสามารถติดตั้ง AI_DESK เพื่อใช้งานจากที่ไหนก็ได้ในเครื่อง
    ```bash
-   cd f:\AI_DESK
+   npm install -g https://github.com/karizo502/ai-desk.git
    ```
 
-2. **ติดตั้ง Dependencies**
+4. **รันตัวช่วยตั้งค่า (Interactive Setup) 🪄**
+   ใช้คำสั่งนี้เพื่อตั้งค่า Master Key, API Keys และสร้าง Token เริ่มต้นโดยอัตโนมัติ
    ```bash
-   npm install
+   ai-desk onboard
    ```
+   *ทำตามขั้นตอนในหน้าจอเพื่อเริ่มใช้งานได้ทันที*
 
-3. **คัดลอกไฟล์ Environment**
-   คัดลอกไฟล์เทมเพลต `.env.example` เป็น `.env`
-   ```bash
-   copy .env.example .env
-   ```
-
-4. **ตั้งค่ารหัสผ่านหลัก (Master Key) 🔒**
-   เปิดไฟล์ `.env` ด้วย Text Editor และใส่รหัสผ่านหลักที่ `AI_DESK_MASTER_KEY` (ความยาวอย่างน้อย 16 ตัวอักษร)
-   รหัสผ่านนี้ใช้สำหรับ**เข้ารหัสข้อมูลทั้งหมด** ห้ามทำหายเด็ดขาด
-   ```env
-   # ตัวอย่าง
-   AI_DESK_MASTER_KEY="your-super-strong-master-key-here-1234"
-   ```
+---
 
 ---
 
@@ -66,27 +55,27 @@ AI_DESK มาพร้อมกับ Command Line Interface (CLI) สำหร
 ### 1. การตรวจสอบความปลอดภัย (Security Audit)
 แนะนำให้รันคำสั่งนี้ทุกครั้งหลังจากติดตั้งหรือปรับปรุงระบบ เพื่อให้แน่ใจว่าการตั้งค่าปลอดภัย
 ```bash
-npx tsx src/cli/index.ts security audit
+ai-desk security audit
 ```
 *ระบบจะตรวจสอบ 14 จุดสำคัญ และต้องได้คะแนน 100% ถึงจะถือว่าปลอดภัยเต็มรูปแบบ*
 
 ### 2. การสร้าง Token สำหรับเข้าใช้งาน
 เนื่องจาก AI_DESK บังคับให้ยืนยันตัวตน คุณต้องสร้าง Token เพื่อใช้เชื่อมต่อ
 ```bash
-npx tsx src/cli/index.ts token create --label "my-laptop"
+ai-desk token create --label "my-laptop"
 ```
 *ระบบจะแสดง Token ออกมา **ให้คัดลอกเก็บไว้** เพราะจะแสดงเพียงครั้งเดียว*
 
 การจัดการ Token อื่นๆ:
 ```bash
-npx tsx src/cli/index.ts token list           # ดูรายการ Token ทั้งหมด
-npx tsx src/cli/index.ts token revoke <id>    # ยกเลิก Token ที่ไม่ได้ใช้งาน
+ai-desk token list           # ดูรายการ Token ทั้งหมด
+ai-desk token revoke <id>    # ยกเลิก Token ที่ไม่ได้ใช้งาน
 ```
 
 ### 3. ตรวจสอบการตั้งค่า (Config Validation)
 เช็คว่าไฟล์ `ai-desk.json` ถูกตั้งค่าอย่างถูกต้องและไม่มีจุดที่เสี่ยงต่อความปลอดภัย
 ```bash
-npx tsx src/cli/index.ts config validate
+ai-desk config validate
 ```
 
 ### 4. ตั้งค่า API Key ของ Model Provider 🧠

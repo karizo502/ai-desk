@@ -42,6 +42,9 @@ import { SkillRegistry } from '../skills/skill-registry.js';
 import { McpServer } from '../mcp/mcp-server.js';
 import 'dotenv/config';
 
+const __pkgRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const __pkgSkills = resolve(__pkgRoot, 'skills');
+
 // ─── PID-file helpers (background mode) ───────────────────
 const __filename_idx = fileURLToPath(import.meta.url);
 
@@ -722,7 +725,7 @@ skillCmd
   .option('--skills-dir <path>', 'Skills directory', 'skills')
   .action(async (opts) => {
     const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
-    const registry = new SkillRegistry(dataDir, opts.skillsDir);
+    const registry = new SkillRegistry(dataDir, [opts.skillsDir, __pkgSkills]);
     await registry.init();
     const skills = registry.list();
 
@@ -755,7 +758,7 @@ skillCmd
   .option('--skills-dir <path>', 'Skills directory', 'skills')
   .action(async (name, opts) => {
     const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
-    const registry = new SkillRegistry(dataDir, opts.skillsDir);
+    const registry = new SkillRegistry(dataDir, [opts.skillsDir, __pkgSkills]);
     await registry.init();
     const ok = registry.enable(name);
     if (ok) {
@@ -780,7 +783,7 @@ skillCmd
   .option('--skills-dir <path>', 'Skills directory', 'skills')
   .action(async (name, opts) => {
     const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
-    const registry = new SkillRegistry(dataDir, opts.skillsDir);
+    const registry = new SkillRegistry(dataDir, [opts.skillsDir, __pkgSkills]);
     await registry.init();
     const ok = registry.disable(name);
     console.log(ok
@@ -795,7 +798,7 @@ skillCmd
   .option('--skills-dir <path>', 'Skills directory', 'skills')
   .action(async (name, opts) => {
     const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
-    const registry = new SkillRegistry(dataDir, opts.skillsDir);
+    const registry = new SkillRegistry(dataDir, [opts.skillsDir, __pkgSkills]);
     await registry.init();
     const skill = registry.get(name);
     if (!skill) {
@@ -859,7 +862,7 @@ program
     });
 
     // Init skill registry
-    const skillRegistry = new SkillRegistry(dataDir, opts.skillsDir);
+    const skillRegistry = new SkillRegistry(dataDir, [opts.skillsDir, __pkgSkills]);
     await skillRegistry.init();
     const skillAllowlist = skillRegistry.toolAllowlist();
     if (skillAllowlist.length > 0) policy.setSkillAllowlist(skillAllowlist);
