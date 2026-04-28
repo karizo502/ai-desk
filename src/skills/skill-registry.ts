@@ -27,7 +27,7 @@ export class SkillRegistry {
   private skills = new Map<string, LoadedSkill>();
   private stateFile: string;
 
-  constructor(dataDir: string, skillsDir?: string) {
+  constructor(dataDir: string, skillsDir?: string | string[]) {
     this.dataDir = dataDir;
     this.loader = new SkillLoader(skillsDir);
     this.stateFile = join(dataDir, STATE_FILE);
