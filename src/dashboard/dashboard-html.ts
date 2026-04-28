@@ -332,47 +332,6 @@ tr:hover td { background: var(--accent-soft); }
     </div>
   </div>
 
-  <div class="content-area" id="tab-agents">
-    <div class="card" style="margin-bottom: 32px; border-top: 2px solid var(--accent)">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-        <h3 style="margin-bottom:0">⚙️ GLOBAL CONFIGURATION</h3>
-        <button class="btn primary" onclick="openDefaultsModal()">MODIFY DEFAULTS</button>
-      </div>
-      <div class="grid-2" id="defaults-grid" style="font-size:11px; letter-spacing: 0.05em">
-        <div style="padding: 8px; border-left: 2px solid var(--border)">
-          <div style="color:var(--muted); font-size: 9px; text-transform: uppercase; margin-bottom: 4px">Primary Model</div>
-          <div id="def-model" style="color:var(--text);font-family:var(--font-mono); font-weight: 600">...</div>
-        </div>
-        <div style="padding: 8px; border-left: 2px solid var(--border)">
-          <div style="color:var(--muted); font-size: 9px; text-transform: uppercase; margin-bottom: 4px">Active Tools</div>
-          <div id="def-tools" style="color:var(--text); font-weight: 600">...</div>
-        </div>
-        <div style="padding: 8px; border-left: 2px solid var(--border)">
-          <div style="color:var(--muted); font-size: 9px; text-transform: uppercase; margin-bottom: 4px">Sandbox Enforcement</div>
-          <div id="def-sandbox" style="color:var(--text); font-weight: 600">...</div>
-        </div>
-        <div style="padding: 8px; border-left: 2px solid var(--border)">
-          <div style="color:var(--muted); font-size: 9px; text-transform: uppercase; margin-bottom: 4px">Execution Timeout</div>
-          <div id="def-timeout" style="color:var(--text); font-weight: 600">...</div>
-        </div>
-      </div>
-      <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px">
-        <h4 style="font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:0.2em;margin-bottom:16px; opacity: 0.8">BUDGETARY CONSTRAINTS</h4>
-        <div class="grid-2" style="font-size:11px">
-          <div><span style="color:var(--muted); text-transform: uppercase; font-size: 9px">Daily Token Quota:</span> <span id="def-daily" style="color:var(--text); font-family: var(--font-mono)">...</span></div>
-          <div><span style="color:var(--muted); text-transform: uppercase; font-size: 9px">Monthly Token Quota:</span> <span id="def-monthly" style="color:var(--text); font-family: var(--font-mono)">...</span></div>
-          <div><span style="color:var(--muted); text-transform: uppercase; font-size: 9px">Monthly Cost Cap:</span> <span id="def-cost" style="color:var(--text); font-family: var(--font-mono)">...</span></div>
-        </div>
-      </div>
-    </div>
-
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <h3>Agents</h3>
-      <button class="btn primary" onclick="openAgentModal(null)">+ Add Agent</button>
-    </div>
-    <div class="grid-2" id="agents-grid"></div>
-  </div>
-
   <div class="content-area" id="tab-teams">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <h3>👥 Teams & Roles</h3>
