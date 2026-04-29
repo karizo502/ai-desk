@@ -23,8 +23,8 @@ export function getDashboardHtml(): string {
 <style>
 :root {
   --sidebar-w: 240px;
-  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --font-main: 'Outfit', sans-serif;
+  --transition: all 0.15s ease;
+  --font-main: 'Inter', 'Outfit', sans-serif;
   --font-tactical: 'Bebas Neue', 'Impact', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   --shadow: 0 4px 20px rgba(0,0,0,0.1);
@@ -34,16 +34,17 @@ export function getDashboardHtml(): string {
 .theme-dark {
   --bg: #0c0c0c;
   --bg-sidebar: #0c0c0c;
-  --bg-card: #121212;
+  --bg-card: rgba(244,239,229,0.015);
   --bg-input: #151515;
-  --border: rgba(200, 144, 72, 0.2);
+  --border: rgba(244,239,229,0.10);
   --text: #f4efe5;
-  --muted: #666;
+  --muted: rgba(244,239,229,0.55);
+  --dim: rgba(244,239,229,0.30);
   --accent: #c89048;
   --accent-soft: rgba(200, 144, 72, 0.1);
   --glass: rgba(12, 12, 12, 0.95);
-  --green: #4ade80;
-  --red: #f87171;
+  --green: #7ddc6b;
+  --red: #e26b5a;
   --yellow: #facc15;
   --purple: #c084fc;
 }
@@ -52,15 +53,16 @@ export function getDashboardHtml(): string {
 .theme-light {
   --bg: #f3f4f6;
   --bg-sidebar: #ffffff;
-  --bg-card: #ffffff;
+  --bg-card: rgba(0,0,0,0.02);
   --bg-input: #f9fafb;
-  --border: rgba(0, 0, 0, 0.08);
+  --border: rgba(0, 0, 0, 0.10);
   --text: #1f2937;
-  --muted: #6b7280;
-  --accent: #2563eb;
-  --accent-soft: rgba(37, 99, 235, 0.1);
+  --muted: rgba(31,41,55,0.55);
+  --dim: rgba(31,41,55,0.30);
+  --accent: #c89048;
+  --accent-soft: rgba(200, 144, 72, 0.1);
   --glass: rgba(255, 255, 255, 0.85);
-  --green: #059669;
+  --green: #16a34a;
   --red: #dc2626;
   --yellow: #d97706;
   --purple: #9333ea;
@@ -79,103 +81,172 @@ body {
 }
 
 
+/* ── SVG Icon helper ───────────────────────────────────── */
+.svg-icon { display: inline-block; flex-shrink: 0; }
+
 /* ── Sidebar ───────────────────────────────────────────── */
 aside {
   width: var(--sidebar-w); background: var(--bg-sidebar); border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; height: 100%; transition: var(--transition);
-  box-shadow: 5px 0 20px rgba(0,0,0,0.5);
+  display: flex; flex-direction: column; height: 100%;
 }
-.sidebar-hdr { padding: 40px 24px; text-align: center; }
-.sidebar-logo { 
-  display: inline-flex; flex-direction: column; align-items: center; gap: 16px;
-  font-family: var(--font-tactical);
-}
+.sidebar-hdr { padding: 26px 24px 22px; border-bottom: 1px solid var(--border); }
+.sidebar-logo { display: flex; align-items: center; gap: 12px; }
 .logo-box {
-  width: 64px; height: 64px; background: var(--accent); color: #0c0c0c;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 48px; font-weight: 700; border-radius: 2px;
+  width: 34px; height: 34px; background: var(--accent); color: #0c0c0c;
+  display: grid; place-items: center;
+  font-family: var(--font-tactical); font-size: 22px; line-height: 1; flex-shrink: 0;
 }
-.logo-text { font-size: 24px; letter-spacing: 6px; color: var(--text); }
-.logo-ver { font-family: var(--font-mono); font-size: 9px; color: var(--accent); opacity: 0.6; letter-spacing: 2px; margin-top: -8px; }
-.nav-group { flex: 1; padding: 0 12px; }
+.logo-name { font-family: var(--font-tactical); font-size: 22px; line-height: 1; letter-spacing: 0.06em; }
+.logo-name span { color: var(--accent); }
+.logo-ver { font-family: var(--font-mono); font-size: 9px; color: var(--muted); margin-top: 4px; letter-spacing: 0.22em; }
+.nav-section-label {
+  padding: 20px 24px 8px; font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: 0.24em; color: var(--muted);
+}
+.nav-group { display: flex; flex-direction: column; }
 .nav-tab {
-  width: 100%; background: none; border: none; color: var(--muted); padding: 12px 16px;
-  border-radius: 4px; cursor: pointer; text-align: left; display: flex; align-items: center;
-  gap: 12px; font-weight: 500; transition: var(--transition); margin-bottom: 4px;
-  text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em;
+  all: unset; cursor: pointer; display: flex; align-items: center; gap: 12px;
+  padding: 12px 24px; padding-left: 21px;
+  color: var(--muted); background: transparent;
+  border-left: 3px solid transparent;
+  transition: var(--transition); font-size: 12px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
 }
-.nav-tab:hover { background: var(--bg-input); color: var(--text); }
-.nav-tab.active { background: var(--accent-soft); color: var(--accent); border-left: 3px solid var(--accent); padding-left: 13px; }
-.nav-tab .icon { font-size: 16px; opacity: 0.8; }
-.sidebar-ftr { padding: 24px; border-top: 1px solid var(--border); }
+.nav-tab:hover { color: var(--text); }
+.nav-tab.active { color: var(--text); background: var(--accent-soft); border-left-color: var(--accent); }
+.nav-tab.active .nav-icon { stroke: var(--accent); }
+.nav-arrow { margin-left: auto; font-family: var(--font-mono); font-size: 9px; color: var(--muted); display: none; }
+.nav-tab.active .nav-arrow { display: inline; }
+.nav-icon { stroke: currentColor; transition: var(--transition); }
+.sidebar-ftr { margin-top: auto; }
 .theme-toggle {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 12px; border-radius: 4px; background: var(--bg-input);
-  font-size: 10px; font-weight: 700; cursor: pointer; margin-bottom: 12px;
-  color: var(--muted); transition: var(--transition); border: 1px solid transparent;
+  padding: 14px 24px; border-top: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.22em;
+  cursor: pointer; color: var(--muted); transition: var(--transition);
 }
-.theme-toggle:hover { border-color: var(--border); color: var(--text); }
+.theme-toggle:hover { color: var(--text); }
+.theme-toggle-right { display: inline-flex; align-items: center; gap: 8px; color: var(--accent); }
 .logout-btn {
-  font-size: 11px; font-weight: 700; color: var(--red); cursor: pointer;
-  text-align: center; opacity: 0.7; transition: var(--transition);
-  text-transform: uppercase; letter-spacing: 0.1em;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 14px 24px 22px; font-size: 12px; font-weight: 700;
+  letter-spacing: 0.06em; color: var(--accent); cursor: pointer; transition: var(--transition);
 }
-.logout-btn:hover { opacity: 1; }
+.logout-btn:hover { opacity: 0.8; }
 
 /* ── Main Layout ────────────────────────────────────────── */
 main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-.main-hdr {
-  padding: 24px 32px; background: var(--glass); backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;
-  z-index: 10;
+main::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.9; z-index: 0;
+  background-image: repeating-linear-gradient(-45deg, rgba(244,239,229,0.025) 0 1px, transparent 1px 10px);
 }
-#view-title { font-family: var(--font-tactical); font-size: 24px; letter-spacing: 4px; text-transform: uppercase; margin: 0; }
-.sys-stats { display: flex; align-items: center; gap: 20px; }
-.stat-item { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
-.stat-item span { color: var(--text); font-weight: 600; font-family: var(--font-mono); margin-left: 4px; }
+main > * { position: relative; z-index: 1; }
+.main-hdr {
+  padding: 18px 32px; background: var(--bg);
+  border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 16px;
+}
+.view-overview { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.24em; color: var(--muted); margin-bottom: 4px; }
+#view-title { font-family: var(--font-tactical); font-size: 38px; letter-spacing: 0.03em; white-space: nowrap; margin: 0; line-height: 1; }
+#view-title .title-accent { color: var(--accent); }
+.sys-stats { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; justify-content: flex-end; }
+.stat-item { font-family: var(--font-mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.18em; display: inline-flex; align-items: center; gap: 8px; }
+.stat-item span { color: var(--text); font-weight: 700; }
 
 .content-area {
-  flex: 1; padding: 40px; overflow-y: auto; display: none;
-  animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  flex: 1; padding: 26px 32px 32px; overflow-y: auto; display: none;
+  animation: fadeIn 0.3s ease;
 }
 .content-area.active { display: block; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Form inputs */
+.login-input {
+  width: 100%; background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text); padding: 10px 14px; outline: none;
+  font-family: var(--font-mono); font-size: 13px; transition: var(--transition);
+  margin-bottom: 12px; border-radius: 0;
+}
+.login-input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+input, textarea, select {
+  background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text); padding: 8px 12px; outline: none;
+  font-family: var(--font-main); font-size: 13px; transition: var(--transition);
+  border-radius: 0; width: 100%;
+}
+input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+label { display: block; font-family: var(--font-mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: 6px; }
+th { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.22em; color: var(--muted); padding: 12px; text-align: left; border-bottom: 1px solid var(--border); text-transform: uppercase; }
+.empty { color: var(--muted); font-style: italic; font-size: 12px; }
 
 /* ── Cards & UI Components ──────────────────────────────── */
 .card {
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px;
-  padding: 24px; margin-bottom: 24px; position: relative; overflow: hidden;
-  box-shadow: 0 4px 30px rgba(0,0,0,0.2);
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 0;
+  padding: 0; margin-bottom: 24px; position: relative; overflow: hidden;
 }
 .card::before {
-  content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%;
-  background: var(--accent); opacity: 0.3;
+  content: ''; position: absolute; top: 0; right: 0; width: 96px; height: 96px; pointer-events: none;
+  background-image: repeating-linear-gradient(-45deg, rgba(200,144,72,0.10) 0 1px, transparent 1px 8px);
+  -webkit-mask-image: linear-gradient(225deg, #000 0%, transparent 70%);
+  mask-image: linear-gradient(225deg, #000 0%, transparent 70%);
 }
+/* Structured card: .card-header + .card-body */
+.card-header {
+  padding: 16px 22px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 14px; position: relative;
+}
+.card-num { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.22em; color: var(--muted); }
+.card-num-sep { width: 1px; height: 18px; background: var(--border); }
+.card-icon { stroke: var(--accent); flex-shrink: 0; }
+.card-body { padding: 10px 22px 22px; }
+.card-count {
+  padding: 2px 8px; border: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: 10px; color: var(--accent); letter-spacing: 0.18em;
+}
+/* Legacy h3-based cards */
 .card h3 {
-  font-family: var(--font-tactical); font-size: 18px; letter-spacing: 2px;
-  margin-bottom: 20px; color: var(--accent);
-  text-transform: uppercase; display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-tactical); font-size: 20px; letter-spacing: 0.10em;
+  color: var(--text); text-transform: uppercase; display: flex; align-items: center; gap: 10px;
+  padding: 16px 22px; border-bottom: 1px solid var(--border); margin: 0;
 }
-.card h3::after {
-  content: ''; flex: 1; height: 1px; background: var(--border); margin-left: 10px;
-}
+.card h3 .card-h3-icon { stroke: var(--accent); flex-shrink: 0; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 
 td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
-tr:hover td { background: var(--accent-soft); }
+tr:hover td { background: rgba(200,144,72,0.06); }
 
-/* Badges */
-.badge { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
-.badge.green { background: rgba(16, 185, 129, 0.1); color: var(--green); }
-.badge.red { background: rgba(239, 68, 68, 0.1); color: var(--red); }
-.badge.yellow { background: rgba(245, 158, 11, 0.1); color: var(--yellow); }
-.badge.blue { background: rgba(59, 130, 246, 0.1); color: var(--accent); }
-.badge.muted { background: var(--bg-input); color: var(--muted); }
+/* Badges — StatusPill style */
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 8px; border: 1px solid currentColor; background: transparent;
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.22em; font-weight: 400;
+}
+.badge::before { content: ''; width: 5px; height: 5px; border-radius: 999px; background: currentColor; flex-shrink: 0; }
+.badge.green { color: var(--green); }
+.badge.red { color: var(--red); }
+.badge.yellow { color: var(--yellow); }
+.badge.blue { color: var(--accent); }
+.badge.muted { color: var(--muted); }
+
+/* Status dot */
+#dot.offline { background: var(--red); box-shadow: 0 0 8px rgba(226,107,90,.7); }
+
+/* Form modal utilities */
+.form-field { margin-bottom: 16px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.form-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+.form-section-title { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.22em; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+.form-check { display: flex; align-items: center; gap: 8px; }
+.form-check input[type="checkbox"] { width: auto; }
+.member-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+.member-table th, .member-table td { padding: 8px; border-bottom: 1px solid var(--border); font-size: 12px; }
+.failover-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 0; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
 /* ── Chat Specific ──────────────────────────────────────── */
@@ -221,42 +292,74 @@ tr:hover td { background: var(--accent-soft); }
   <div class="sidebar-hdr">
     <div class="sidebar-logo">
       <div class="logo-box">A</div>
-      <div class="logo-text">AI_DESK</div>
-      <div class="logo-ver">CONSOLE · v0.4</div>
+      <div>
+        <div class="logo-name">AI<span>_</span>DESK</div>
+        <div class="logo-ver">CONSOLE·v0.4</div>
+      </div>
     </div>
   </div>
-  <div class="nav-group">
-    <button class="nav-tab active" id="ntab-status" onclick="switchTab('status')"><span class="icon">📊</span> Status</button>
-    <button class="nav-tab" id="ntab-agents" onclick="switchTab('agents')"><span class="icon">⚙️</span> Agents</button>
-    <button class="nav-tab" id="ntab-teams" onclick="switchTab('teams')"><span class="icon">👥</span> Teams</button>
-    <button class="nav-tab" id="ntab-skills" onclick="switchTab('skills')"><span class="icon">🎯</span> Skills</button>
-    <button class="nav-tab" id="ntab-mcp" onclick="switchTab('mcp')"><span class="icon">🔌</span> MCP</button>
-    <button class="nav-tab" id="ntab-messaging" onclick="switchTab('messaging')"><span class="icon">🤖</span> Messaging</button>
-    <button class="nav-tab" id="ntab-chat" onclick="switchTab('chat')"><span class="icon">💬</span> Chat</button>
-    <button class="nav-tab" id="ntab-creds" onclick="switchTab('creds')"><span class="icon">🔑</span> Credentials</button>
-  </div>
+  <div class="nav-section-label">OPERATIONS</div>
+  <nav class="nav-group">
+    <button class="nav-tab active" id="ntab-status" onclick="switchTab('status')">
+      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg>
+      Status<span class="nav-arrow">→</span>
+    </button>
+    <button class="nav-tab" id="ntab-agents" onclick="switchTab('agents')">
+      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.4 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.4 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.9.4l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.4-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.4-1.9l-.1-.1A2 2 0 116.9 4.5l.1.1a1.7 1.7 0 001.9.4h0a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.4l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.4 1.9v0a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+      Agents
+    </button>
+    <button class="nav-tab" id="ntab-teams" onclick="switchTab('teams')">
+      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="3"/><path d="M3 19c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="7" r="2"/><path d="M15 19c0-2.5 1.8-4.5 4-5"/></svg>
+      Teams
+    </button>
+    <button class="nav-tab" id="ntab-skills" onclick="switchTab('skills')">
+      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z"/></svg>
+      Skills
+    </button>
+    <button class="nav-tab" id="ntab-mcp" onclick="switchTab('mcp')">
+      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 11-12 0V8zM12 18v4"/></svg>
+      MCP
+    </button>
+    <button class="nav-tab" id="ntab-messaging" onclick="switchTab('messaging')">
+      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4V5z"/></svg>
+      Messaging
+    </button>
+    <button class="nav-tab" id="ntab-chat" onclick="switchTab('chat')">
+      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Chat
+    </button>
+    <button class="nav-tab" id="ntab-creds" onclick="switchTab('creds')">
+      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="14" r="4"/><path d="M11 11l9-9M16 6l3 3M14 8l3 3"/></svg>
+      Credentials
+    </button>
+  </nav>
   <div class="sidebar-ftr">
     <div class="theme-toggle" onclick="toggleTheme()">
       <span>THEME</span>
-      <span id="theme-label">DARK</span>
+      <span class="theme-toggle-right" id="theme-toggle-right">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="theme-icon"><path d="M20 14a8 8 0 11-9-11 6 6 0 009 11z"/></svg>
+        <span id="theme-label">DARK</span>
+      </span>
     </div>
-    <div class="logout-btn" onclick="logout()">Logout</div>
+    <div class="logout-btn" onclick="logout()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H5a2 2 0 00-2 2v12a2 2 0 002 2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      Logout
+    </div>
   </div>
 </aside>
 
 <main>
   <div class="main-hdr">
-    <div style="display:flex; flex-direction:column">
-      <h2 id="view-title" style="margin-bottom: 4px; font-family: var(--font-tactical); letter-spacing: 0.1em">SYSTEM STATUS</h2>
-      <div style="height: 2px; width: 80px; background: var(--accent); opacity: 0.6; margin-bottom: 2px"></div>
-      <div style="height: 2px; width: 40px; background: var(--accent); opacity: 0.3"></div>
+    <div>
+      <div class="view-overview" id="view-overview">OVERVIEW</div>
+      <h2 id="view-title">SYSTEM <span class="title-accent">STATUS</span></h2>
     </div>
     <div class="sys-stats">
       <div class="stat-item">UPTIME <span id="uptime">—</span></div>
       <div class="stat-item">CONNECTIONS <span id="conn-cnt">—</span></div>
       <div class="stat-item">PROVIDERS <span id="providers">—</span></div>
-      <div id="conn-status" style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em">CONNECTING…</div>
-      <div class="status-dot" id="dot" style="width:8px;height:8px;border-radius:2px;background:var(--green);margin-left:8px;box-shadow:0 0 10px var(--green)"></div>
+      <div id="conn-status" style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em">CONNECTING…</div>
+      <div id="dot" style="width:7px;height:7px;border-radius:999px;background:var(--green);box-shadow:0 0 8px rgba(125,220,107,.7)"></div>
     </div>
   </div>
 
@@ -264,50 +367,64 @@ tr:hover td { background: var(--accent-soft); }
   <div class="content-area active" id="tab-status">
     <div class="grid-2">
       <div class="card">
-        <h3>⚡ Agents</h3>
-        <table id="agents-tbl">
+        <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg> Agents</h3>
+        <div class="card-body" style="padding-top:8px">
+        <table id="agents-tbl" style="width:100%">
           <thead><tr><th>ID</th><th>Model</th><th>Sessions</th><th>Status</th></tr></thead>
           <tbody><tr><td colspan="4" class="empty">loading…</td></tr></tbody>
         </table>
+        </div>
       </div>
       <div class="card">
-        <h3>👥 Teams</h3>
-        <table id="teams-tbl">
+        <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="3"/><path d="M3 19c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="7" r="2"/><path d="M15 19c0-2.5 1.8-4.5 4-5"/></svg> Teams</h3>
+        <div class="card-body" style="padding-top:8px">
+        <table id="teams-tbl" style="width:100%">
           <thead><tr><th>Team</th><th>Lead</th><th>Members</th></tr></thead>
           <tbody><tr><td colspan="3" class="empty">loading…</td></tr></tbody>
         </table>
+        </div>
       </div>
     </div>
     <div class="grid-2">
       <div class="card">
-        <h3>💰 Budget</h3>
+        <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M9 10c0-1 1-2 3-2s3 1 3 2-1 1.5-3 2-3 1-3 2 1 2 3 2 3-1 3-2"/><path d="M12 6v12"/></svg> Budget</h3>
+        <div class="card-body" style="padding-top:8px">
         <div id="budget-wrap"><div class="empty">loading…</div></div>
+        </div>
       </div>
       <div class="card">
-        <h3>🎯 Skills</h3>
-        <table id="skills-tbl-stat">
+        <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z"/></svg> Skills</h3>
+        <div class="card-body" style="padding-top:8px">
+        <table id="skills-tbl-stat" style="width:100%">
           <thead><tr><th>Name</th><th>Version</th><th>Status</th></tr></thead>
           <tbody><tr><td colspan="3" class="empty">loading…</td></tr></tbody>
         </table>
+        </div>
       </div>
     </div>
     <div class="card">
-      <h3>🔌 MCP Servers</h3>
-      <table id="mcp-tbl-stat">
+      <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 11-12 0V8zM12 18v4"/></svg> MCP Servers</h3>
+      <div class="card-body" style="padding-top:8px">
+      <table id="mcp-tbl-stat" style="width:100%">
         <thead><tr><th>Server</th><th>Tools</th><th>Status</th></tr></thead>
         <tbody><tr><td colspan="3" class="empty">loading…</td></tr></tbody>
       </table>
+      </div>
     </div>
     <div class="card">
-      <h3>💬 Messaging</h3>
-      <table id="msg-tbl-stat">
+      <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4V5z"/></svg> Messaging</h3>
+      <div class="card-body" style="padding-top:8px">
+      <table id="msg-tbl-stat" style="width:100%">
         <thead><tr><th>Platform</th><th>Status</th></tr></thead>
         <tbody><tr><td colspan="2" class="empty">loading…</td></tr></tbody>
       </table>
+      </div>
     </div>
     <div class="card">
-      <h3>📋 Live Event Log <span id="ev-count" style="margin-left:8px;opacity:0.6"></span></h3>
+      <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6V3z"/><path d="M14 3v5h5"/></svg> Live Event Log <span id="ev-count" style="margin-left:8px;font-size:10px;color:var(--muted);font-family:var(--font-mono)"></span></h3>
+      <div class="card-body">
       <div id="event-log" style="height:300px;overflow-y:auto;font-family:var(--font-mono);font-size:11px"></div>
+      </div>
     </div>
   </div>
 
@@ -315,7 +432,7 @@ tr:hover td { background: var(--accent-soft); }
   <!-- Agents -->
   <div class="content-area" id="tab-agents">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px">
-      <h3 style="margin:0">⚙️ AGENT MANAGEMENT</h3>
+      <h3 style="margin:0;font-family:var(--font-tactical);font-size:20px;letter-spacing:0.1em;text-transform:uppercase">AGENT MANAGEMENT</h3>
       <div style="display:flex; gap:12px">
         <button class="btn" onclick="openDefaultsModal()">Global Defaults</button>
         <button class="btn primary" onclick="openAgentModal(null)">+ Add Agent</button>
@@ -323,8 +440,8 @@ tr:hover td { background: var(--accent-soft); }
     </div>
 
     <div class="card" style="margin-bottom:32px">
-      <h3>Global Defaults <span style="font-size:10px; color:var(--muted); margin-left:8px; text-transform:none">(fallback values)</span></h3>
-      <div class="grid-2">
+      <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.4 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.4 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.9.4l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.4-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.4-1.9l-.1-.1A2 2 0 116.9 4.5l.1.1a1.7 1.7 0 001.9.4h0a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.4l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.4 1.9v0a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg> Global Defaults <span style="font-size:10px; color:var(--muted); margin-left:8px; text-transform:none;font-family:var(--font-main)">(fallback values)</span></h3>
+      <div class="card-body"><div class="grid-2">
         <div style="display:flex; flex-direction:column; gap:8px">
           <div class="stat-item">Model <span id="def-model">—</span></div>
           <div class="stat-item">Tools <span id="def-tools">—</span></div>
@@ -336,7 +453,7 @@ tr:hover td { background: var(--accent-soft); }
           <div class="stat-item">Monthly Tokens <span id="def-monthly">—</span></div>
           <div class="stat-item">Monthly Cost <span id="def-cost">—</span></div>
         </div>
-      </div>
+      </div></div>
     </div>
 
     <div id="agents-grid"></div>
@@ -363,64 +480,74 @@ tr:hover td { background: var(--accent-soft); }
 
   <div class="content-area" id="tab-teams">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px">
-      <h3 style="margin:0">👥 TEAMS & ROLES</h3>
+      <h3 style="margin:0;font-family:var(--font-tactical);font-size:20px;letter-spacing:0.1em;text-transform:uppercase">TEAMS &amp; ROLES</h3>
       <div style="display:flex; gap:12px">
         <button class="btn" onclick="openRoleModal(null)">+ New Role</button>
         <button class="btn primary" onclick="openTeamModal(null)">+ New Team</button>
       </div>
     </div>
     <div class="card">
-      <h3>Roles</h3>
+      <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l3 6 6 .9-4.5 4.4 1 6.2L12 18l-5.5 2.5 1-6.2L3 9.9 9 9z"/></svg> Roles</h3>
+      <div class="card-body">
       <div id="roles-grid" class="grid-2"></div>
+      </div>
     </div>
     <div class="card">
-      <h3>Teams</h3>
+      <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="3"/><path d="M3 19c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="7" r="2"/><path d="M15 19c0-2.5 1.8-4.5 4-5"/></svg> Teams</h3>
+      <div class="card-body">
       <div id="teams-grid" style="display:flex;flex-direction:column;gap:16px"></div>
+      </div>
     </div>
   </div>
 
   <!-- Skills -->
   <div class="content-area" id="tab-skills">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px">
-      <h3 style="margin:0">🎯 SKILL MANAGEMENT</h3>
+      <h3 style="margin:0;font-family:var(--font-tactical);font-size:20px;letter-spacing:0.1em;text-transform:uppercase">SKILL MANAGEMENT</h3>
       <div style="display:flex; gap:12px">
         <button class="btn" onclick="refreshSkills()">Refresh Skills</button>
       </div>
     </div>
     <div class="card">
-      <h3>Installed Skills</h3>
+      <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z"/></svg> Installed Skills</h3>
+      <div class="card-body" style="padding-top:8px">
       <table id="skills-tbl" style="width:100%">
         <thead><tr><th>Name</th><th>Version</th><th>Description</th><th>Status</th></tr></thead>
         <tbody></tbody>
       </table>
+      </div>
     </div>
   </div>
 
   <!-- MCP -->
   <div class="content-area" id="tab-mcp">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px">
-      <h3 style="margin:0">🔌 MCP SERVERS</h3>
+      <h3 style="margin:0;font-family:var(--font-tactical);font-size:20px;letter-spacing:0.1em;text-transform:uppercase">MCP SERVERS</h3>
     </div>
     <div class="card">
-      <h3>Connected Servers</h3>
+      <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 11-12 0V8zM12 18v4"/></svg> Connected Servers</h3>
+      <div class="card-body" style="padding-top:8px">
       <table id="mcp-tbl" style="width:100%">
         <thead><tr><th>Name</th><th>Tools</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody></tbody>
       </table>
+      </div>
     </div>
   </div>
 
   <!-- Messaging -->
   <div class="content-area" id="tab-messaging">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px">
-      <h3 style="margin:0">🤖 MESSAGING ADAPTERS</h3>
+      <h3 style="margin:0;font-family:var(--font-tactical);font-size:20px;letter-spacing:0.1em;text-transform:uppercase">MESSAGING ADAPTERS</h3>
     </div>
     <div class="card">
-      <h3>Platform Status</h3>
+      <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4V5z"/></svg> Platform Status</h3>
+      <div class="card-body" style="padding-top:8px">
       <table id="msg-tbl" style="width:100%">
         <thead><tr><th>Platform</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody></tbody>
       </table>
+      </div>
     </div>
   </div>
 
@@ -428,7 +555,8 @@ tr:hover td { background: var(--accent-soft); }
     <div class="grid-2">
       <!-- Anthropic -->
       <div class="card">
-        <h3>Anthropic</h3>
+        <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="14" r="4"/><path d="M11 11l9-9M16 6l3 3M14 8l3 3"/></svg> Anthropic</h3>
+        <div class="card-body">
         <div style="font-size:12px;margin-bottom:12px">Status: <span id="ant-status">...</span></div>
         <div style="display:flex;gap:8px;margin-bottom:16px">
           <button class="btn active" id="tab-ant-apikey" onclick="switchAnthropicTab('apikey')">API Key</button>
@@ -445,11 +573,13 @@ tr:hover td { background: var(--accent-soft); }
         </div>
         <div id="ant-msg" style="margin-top:12px;font-size:12px;min-height:16px"></div>
         <button class="btn danger" style="margin-top:12px" onclick="clearCred('anthropic', 'ant-status', 'ant-msg')">Clear</button>
+        </div>
       </div>
 
       <!-- Google -->
       <div class="card">
-        <h3>Google</h3>
+        <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="14" r="4"/><path d="M11 11l9-9M16 6l3 3M14 8l3 3"/></svg> Google</h3>
+        <div class="card-body">
         <div style="font-size:12px;margin-bottom:12px">Status: <span id="goo-status">...</span></div>
         <div style="display:flex;gap:8px;margin-bottom:16px">
           <button class="btn active" id="tab-apikey" onclick="switchGoogleTab('apikey')">API Key</button>
@@ -469,21 +599,25 @@ tr:hover td { background: var(--accent-soft); }
         </div>
         <div id="goo-msg" style="margin-top:12px;font-size:12px;min-height:16px"></div>
         <button class="btn danger" style="margin-top:12px" onclick="clearCred('google', 'goo-status', 'goo-msg')">Clear</button>
+        </div>
       </div>
 
       <!-- OpenRouter -->
       <div class="card">
-        <h3>OpenRouter</h3>
+        <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg> OpenRouter</h3>
+        <div class="card-body">
         <div style="font-size:12px;margin-bottom:12px">Status: <span id="or-status">...</span></div>
         <input type="password" id="or-key" class="login-input" placeholder="sk-or-v1-...">
         <button class="btn primary" onclick="saveOpenRouterKey()">Save Key</button>
         <div id="or-msg" style="margin-top:12px;font-size:12px;min-height:16px"></div>
         <button class="btn danger" style="margin-top:12px" onclick="clearCred('openrouter', 'or-status', 'or-msg')">Clear</button>
+        </div>
       </div>
 
       <!-- Telegram -->
       <div class="card">
-        <h3>Telegram Bot</h3>
+        <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-7-7 18-3-8-8-3z"/></svg> Telegram Bot</h3>
+        <div class="card-body">
         <div style="font-size:12px;margin-bottom:12px">Status: <span id="tg-status">...</span></div>
         <input type="password" id="tg-token" class="login-input" placeholder="123456:ABC-DEF...">
         <div style="display:flex;gap:8px">
@@ -491,6 +625,7 @@ tr:hover td { background: var(--accent-soft); }
           <button class="btn danger" onclick="disconnectTelegram()">Disconnect</button>
         </div>
         <div id="tg-msg" style="margin-top:12px;font-size:12px;min-height:16px"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -823,6 +958,12 @@ function setTheme(mode) {
   document.body.classList.toggle('theme-dark', mode === 'dark');
   document.body.classList.toggle('theme-light', mode === 'light');
   $('theme-label').textContent = mode.toUpperCase();
+  const icon = $('theme-icon');
+  if (icon) {
+    icon.innerHTML = mode === 'dark'
+      ? '<path d="M20 14a8 8 0 11-9-11 6 6 0 009 11z"/>'
+      : '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+  }
   localStorage.setItem('ai_desk_theme', mode);
 }
 
@@ -844,24 +985,30 @@ function initApp() {
 //  Tab navigation
 // ═══════════════════════════════════════════════════════════════
 function switchTab(name) {
-  const titles = { 
-    status: 'System Status', 
-    agents: 'Agent Management', 
-    teams: 'Teams & Roles', 
-    skills: 'Skill Management',
-    mcp: 'MCP Servers',
-    messaging: 'Messaging Adapters',
-    chat: 'AI Chat', 
-    creds: 'Credentials' 
+  const titles = {
+    status:    ['SYSTEM', 'STATUS',    'OVERVIEW / №01'],
+    agents:    ['MODEL',  'AGENTS',    'OVERVIEW / №02'],
+    teams:     ['WORKING','TEAMS',     'OVERVIEW / №03'],
+    skills:    ['SKILL',  'REGISTRY',  'OVERVIEW / №04'],
+    mcp:       ['MCP',    'SERVERS',   'OVERVIEW / №05'],
+    messaging: ['MSG',    'ADAPTERS',  'OVERVIEW / №06'],
+    chat:      ['LIVE',   'CHAT',      'OVERVIEW / №07'],
+    creds:     ['API',    'CREDENTIALS','OVERVIEW / №08'],
   };
-  $('view-title').textContent = titles[name] || name;
-  
+  const [prefix, accent, overview] = titles[name] || [name.toUpperCase(), '', ''];
+  $('view-title').innerHTML = prefix + (accent ? ' <span class="title-accent">' + accent + '</span>' : '');
+  $('view-overview').textContent = overview;
+
   ['status','agents','teams','skills','mcp','messaging','chat','creds'].forEach(t => {
     const content = $('tab-' + t);
     if (content) content.classList.toggle('active', t === name);
-    
+
     const ntab = $('ntab-' + t);
-    if (ntab) ntab.classList.toggle('active', t === name);
+    if (ntab) {
+      ntab.classList.toggle('active', t === name);
+      const arrow = ntab.querySelector('.nav-arrow');
+      if (arrow) arrow.style.display = t === name ? '' : 'none';
+    }
   });
   if (name === 'agents') loadAgents();
   if (name === 'teams')  loadTeams();
