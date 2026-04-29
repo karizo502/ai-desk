@@ -10,7 +10,12 @@
  *   🔑 Credentials — store/manage Anthropic & Google API keys
  */
 
+import { createRequire } from 'node:module';
+const _require = createRequire(import.meta.url);
+const _pkg = _require('../../package.json') as { version: string };
+
 export function getDashboardHtml(): string {
+  const version = _pkg.version;
   return /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -268,21 +273,52 @@ tr:hover td { background: rgba(200,144,72,0.06); }
 .btn.primary:hover { opacity: 0.9; transform: translateY(-1px); }
 .btn.danger { border-color: var(--red); color: var(--red); }
 
-/* Agents Grid */
-#agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; }
-.agent-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; transition: var(--transition); position: relative; overflow: hidden; display: flex; flex-direction: column; }
-.agent-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.3); border-color: var(--accent); }
-.agent-card-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
-.agent-avatar { width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--accent); object-fit: cover; background: var(--bg-input); flex-shrink: 0; }
-.agent-avatar-placeholder { width: 56px; height: 56px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; flex-shrink: 0; font-family: var(--font-tactical); }
-.agent-card-info { flex: 1; min-width: 0; }
-.agent-card-id { font-size: 16px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.agent-card-name { font-size: 12px; color: var(--muted); margin-top: -2px; }
-.agent-card-def { font-size: 10px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; margin-top: 4px; }
-.agent-card-personality { font-size: 11px; color: var(--muted); font-style: italic; margin-bottom: 16px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; }
-.agent-card-row { font-size: 12px; color: var(--muted); margin-bottom: 8px; display: flex; justify-content: space-between; }
-.agent-card-row span { color: var(--text); font-family: var(--font-mono); }
-.agent-card-actions { margin-top: auto; display: flex; gap: 8px; border-top: 1px solid var(--border); padding-top: 16px; }
+/* Agents Two-Panel */
+.agents-panels { display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px; align-items: start; }
+.filter-bar { display: flex; gap: 8px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.filter-btn { all: unset; cursor: pointer; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; padding: 4px 10px; border: 1px solid var(--border); color: var(--muted); transition: var(--transition); }
+.filter-btn:hover { color: var(--text); border-color: var(--text); }
+.filter-btn.active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.roster-head { display: grid; grid-template-columns: 36px 1fr 2fr 0.7fr 0.7fr 0.9fr; gap: 0; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.2em; color: var(--muted); padding: 10px 16px; border-bottom: 1px solid var(--border); text-transform: uppercase; }
+.roster-row { display: grid; grid-template-columns: 36px 1fr 2fr 0.7fr 0.7fr 0.9fr; gap: 0; padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; font-size: 12px; align-items: center; border-left: 2px solid transparent; }
+.roster-row:last-child { border-bottom: none; }
+.roster-row:hover { background: rgba(244,239,229,0.03); }
+.roster-row.selected { background: var(--accent-soft); border-left-color: var(--accent); padding-left: 14px; }
+.roster-row .r-num { font-family: var(--font-mono); font-size: 9px; color: var(--dim); }
+.roster-row .r-id { font-family: var(--font-mono); font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.roster-row .r-id small { display: block; font-size: 9px; color: var(--muted); font-weight: 400; margin-top: 1px; }
+.roster-row .r-model { color: var(--muted); font-size: 10px; font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.roster-row .r-stat { font-size: 10px; color: var(--muted); font-family: var(--font-mono); }
+/* Dossier panel */
+.dossier-empty { display: flex; align-items: center; justify-content: center; min-height: 280px; color: var(--dim); font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; }
+.dossier-num { font-family: var(--font-mono); font-size: 9px; color: var(--muted); letter-spacing: 0.26em; text-transform: uppercase; margin-bottom: 6px; }
+.dossier-name { font-family: var(--font-tactical); font-size: 48px; line-height: 1; color: var(--text); margin-bottom: 6px; letter-spacing: 0.04em; }
+.dossier-pill-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.dossier-provider { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 0.16em; }
+.dossier-desc { font-size: 12px; color: var(--muted); line-height: 1.6; margin-bottom: 20px; font-style: italic; }
+.dossier-config-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.22em; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; }
+.dossier-config { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border: 1px solid var(--border); margin-bottom: 20px; }
+.dossier-config-cell { background: var(--bg); padding: 12px 14px; }
+.dossier-config-cell-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+.dossier-config-cell-val { font-family: var(--font-mono); font-size: 13px; color: var(--text); }
+.dossier-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+/* Role dossier specifics */
+.dossier-resp-list { list-style: none; padding: 0; margin: 0 0 20px 0; display: flex; flex-direction: column; gap: 4px; }
+.dossier-resp-list li { font-size: 11px; color: var(--muted); padding: 7px 12px; border: 1px solid var(--border); border-left: 2px solid var(--accent); font-family: var(--font-mono); line-height: 1.4; }
+.dossier-delegate { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 0.12em; margin-bottom: 20px; }
+.dossier-delegate span { color: var(--accent); }
+.dossier-sysprompt { font-size: 10px; color: var(--muted); line-height: 1.6; padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border); margin-bottom: 20px; font-family: var(--font-mono); white-space: pre-wrap; max-height: 100px; overflow-y: auto; }
+/* Team dossier specifics */
+.dossier-goal { font-size: 12px; color: var(--muted); font-style: italic; line-height: 1.6; margin-bottom: 20px; padding-left: 12px; border-left: 2px solid var(--accent); }
+.member-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border: 1px solid var(--border); margin-bottom: 20px; }
+.member-slot { background: var(--bg); padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }
+.member-slot.lead { background: var(--accent-soft); }
+.member-slot-role { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase; }
+.member-slot.lead .member-slot-role { color: var(--accent); }
+.member-slot-agent { font-family: var(--font-mono); font-size: 12px; color: var(--text); }
+/* keep avatar classes for modal compatibility */
+.agent-avatar { width: 40px; height: 40px; border-radius: 0; border: 1px solid var(--accent); object-fit: cover; }
+.agent-avatar-placeholder { width: 40px; height: 40px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; font-family: var(--font-tactical); }
 </style>
 
 </head>
@@ -294,7 +330,7 @@ tr:hover td { background: rgba(200,144,72,0.06); }
       <div class="logo-box">A</div>
       <div>
         <div class="logo-name">AI<span>_</span>DESK</div>
-        <div class="logo-ver">CONSOLE·v0.4</div>
+        <div class="logo-ver">CONSOLE·v${version}</div>
       </div>
     </div>
   </div>
@@ -310,7 +346,11 @@ tr:hover td { background: rgba(200,144,72,0.06); }
     </button>
     <button class="nav-tab" id="ntab-teams" onclick="switchTab('teams')">
       <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="3"/><path d="M3 19c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="7" r="2"/><path d="M15 19c0-2.5 1.8-4.5 4-5"/></svg>
-      Teams
+      Teams<span class="nav-arrow">→</span>
+    </button>
+    <button class="nav-tab" id="ntab-roles" onclick="switchTab('roles')">
+      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
+      Roles<span class="nav-arrow">→</span>
     </button>
     <button class="nav-tab" id="ntab-skills" onclick="switchTab('skills')">
       <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z"/></svg>
@@ -432,31 +472,57 @@ tr:hover td { background: rgba(200,144,72,0.06); }
   <!-- Agents -->
   <div class="content-area" id="tab-agents">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px">
-      <h3 style="margin:0;font-family:var(--font-tactical);font-size:20px;letter-spacing:0.1em;text-transform:uppercase">AGENT MANAGEMENT</h3>
-      <div style="display:flex; gap:12px">
-        <button class="btn" onclick="openDefaultsModal()">Global Defaults</button>
-        <button class="btn primary" onclick="openAgentModal(null)">+ Add Agent</button>
+      <h3 style="margin:0;font-family:var(--font-tactical);font-size:20px;letter-spacing:0.1em;text-transform:uppercase">AGENT ROSTER</h3>
+      <div style="display:flex; gap:8px; align-items:center">
+        <span id="def-model-badge" style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:0.16em;margin-right:4px"></span>
+        <button class="btn" onclick="openDefaultsModal()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.4 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.4 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.9.4l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.4-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.4-1.9l-.1-.1A2 2 0 116.9 4.5l.1.1a1.7 1.7 0 001.9.4h0a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.4l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.4 1.9v0a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>Defaults
+        </button>
+        <button class="btn primary" onclick="openAgentModal(null)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px"><path d="M12 5v14M5 12h14"/></svg>Enroll Agent
+        </button>
       </div>
     </div>
 
-    <div class="card" style="margin-bottom:32px">
-      <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.4 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.4 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.9.4l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.4-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.4-1.9l-.1-.1A2 2 0 116.9 4.5l.1.1a1.7 1.7 0 001.9.4h0a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.4l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.4 1.9v0a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg> Global Defaults <span style="font-size:10px; color:var(--muted); margin-left:8px; text-transform:none;font-family:var(--font-main)">(fallback values)</span></h3>
-      <div class="card-body"><div class="grid-2">
-        <div style="display:flex; flex-direction:column; gap:8px">
-          <div class="stat-item">Model <span id="def-model">—</span></div>
-          <div class="stat-item">Tools <span id="def-tools">—</span></div>
-          <div class="stat-item">Sandbox <span id="def-sandbox">—</span></div>
-          <div class="stat-item">Timeout <span id="def-timeout">—</span></div>
+    <div class="agents-panels">
+      <!-- LEFT: ROSTER -->
+      <div class="card" style="margin-bottom:0">
+        <h3 style="margin:0;padding:16px 16px 14px;border-bottom:1px solid var(--border)">
+          <svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          ROSTER
+        </h3>
+        <div class="filter-bar">
+          <button class="filter-btn active" data-filter="all" onclick="setAgentFilter('all')">ALL</button>
+          <button class="filter-btn" data-filter="active" onclick="setAgentFilter('active')">ACTIVE</button>
+          <button class="filter-btn" data-filter="idle" onclick="setAgentFilter('idle')">IDLE</button>
+          <button class="filter-btn" data-filter="offline" onclick="setAgentFilter('offline')">OFFLINE</button>
         </div>
-        <div style="display:flex; flex-direction:column; gap:8px">
-          <div class="stat-item">Daily Tokens <span id="def-daily">—</span></div>
-          <div class="stat-item">Monthly Tokens <span id="def-monthly">—</span></div>
-          <div class="stat-item">Monthly Cost <span id="def-cost">—</span></div>
+        <div class="roster-head">
+          <div>№</div><div>ID</div><div>MODEL</div><div>SESS</div><div>TOKENS</div><div>STATUS</div>
         </div>
-      </div></div>
+        <div id="agents-roster"></div>
+      </div>
+
+      <!-- RIGHT: DOSSIER -->
+      <div class="card" style="margin-bottom:0">
+        <h3 style="margin:0;padding:16px 16px 14px;border-bottom:1px solid var(--border)">
+          <svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          DOSSIER
+        </h3>
+        <div id="agents-dossier" class="card-body" style="padding:20px 20px 24px">
+          <div class="dossier-empty">SELECT AN AGENT</div>
+        </div>
+      </div>
     </div>
 
-    <div id="agents-grid"></div>
+    <!-- hidden spans for defaults used by renderDefaults() -->
+    <span id="def-model" style="display:none"></span>
+    <span id="def-tools" style="display:none"></span>
+    <span id="def-sandbox" style="display:none"></span>
+    <span id="def-timeout" style="display:none"></span>
+    <span id="def-daily" style="display:none"></span>
+    <span id="def-monthly" style="display:none"></span>
+    <span id="def-cost" style="display:none"></span>
   </div>
 
   <!-- Chat -->
@@ -478,24 +544,68 @@ tr:hover td { background: rgba(200,144,72,0.06); }
     </div>
   </div>
 
+  <!-- Teams -->
   <div class="content-area" id="tab-teams">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px">
-      <h3 style="margin:0;font-family:var(--font-tactical);font-size:20px;letter-spacing:0.1em;text-transform:uppercase">TEAMS &amp; ROLES</h3>
-      <div style="display:flex; gap:12px">
-        <button class="btn" onclick="openRoleModal(null)">+ New Role</button>
-        <button class="btn primary" onclick="openTeamModal(null)">+ New Team</button>
+      <h3 style="margin:0;font-family:var(--font-tactical);font-size:20px;letter-spacing:0.1em;text-transform:uppercase">WORKING TEAMS</h3>
+      <button class="btn primary" onclick="openTeamModal(null)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px"><path d="M12 5v14M5 12h14"/></svg>New Team
+      </button>
+    </div>
+    <div class="agents-panels">
+      <!-- LEFT: Teams roster -->
+      <div class="card" style="margin-bottom:0">
+        <h3 style="margin:0;padding:16px 16px 14px;border-bottom:1px solid var(--border)">
+          <svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="3"/><path d="M3 19c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="7" r="2"/><path d="M15 19c0-2.5 1.8-4.5 4-5"/></svg>
+          ROSTER
+        </h3>
+        <div class="roster-head" style="grid-template-columns:36px 1fr 1.5fr 0.7fr">
+          <div>№</div><div>NAME</div><div>LEAD</div><div>MEMBERS</div>
+        </div>
+        <div id="teams-roster"></div>
+      </div>
+      <!-- RIGHT: Team brief -->
+      <div class="card" style="margin-bottom:0">
+        <h3 style="margin:0;padding:16px 16px 14px;border-bottom:1px solid var(--border)">
+          <svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          BRIEF
+        </h3>
+        <div id="teams-dossier" class="card-body" style="padding:20px 20px 24px">
+          <div class="dossier-empty">SELECT A TEAM</div>
+        </div>
       </div>
     </div>
-    <div class="card">
-      <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l3 6 6 .9-4.5 4.4 1 6.2L12 18l-5.5 2.5 1-6.2L3 9.9 9 9z"/></svg> Roles</h3>
-      <div class="card-body">
-      <div id="roles-grid" class="grid-2"></div>
-      </div>
+  </div>
+
+  <!-- Roles -->
+  <div class="content-area" id="tab-roles">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px">
+      <h3 style="margin:0;font-family:var(--font-tactical);font-size:20px;letter-spacing:0.1em;text-transform:uppercase">ROLE REGISTRY</h3>
+      <button class="btn primary" onclick="openRoleModal(null)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px"><path d="M12 5v14M5 12h14"/></svg>New Role
+      </button>
     </div>
-    <div class="card">
-      <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="3"/><path d="M3 19c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="7" r="2"/><path d="M15 19c0-2.5 1.8-4.5 4-5"/></svg> Teams</h3>
-      <div class="card-body">
-      <div id="teams-grid" style="display:flex;flex-direction:column;gap:16px"></div>
+    <div class="agents-panels">
+      <!-- LEFT: Roles roster -->
+      <div class="card" style="margin-bottom:0">
+        <h3 style="margin:0;padding:16px 16px 14px;border-bottom:1px solid var(--border)">
+          <svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
+          REGISTRY
+        </h3>
+        <div class="roster-head" style="grid-template-columns:36px 1fr 1.5fr 1fr">
+          <div>№</div><div>NAME</div><div>ID</div><div>DELEGATES</div>
+        </div>
+        <div id="roles-roster"></div>
+      </div>
+      <!-- RIGHT: Role profile -->
+      <div class="card" style="margin-bottom:0">
+        <h3 style="margin:0;padding:16px 16px 14px;border-bottom:1px solid var(--border)">
+          <svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          PROFILE
+        </h3>
+        <div id="roles-dossier" class="card-body" style="padding:20px 20px 24px">
+          <div class="dossier-empty">SELECT A ROLE</div>
+        </div>
       </div>
     </div>
   </div>
@@ -986,20 +1096,21 @@ function initApp() {
 // ═══════════════════════════════════════════════════════════════
 function switchTab(name) {
   const titles = {
-    status:    ['SYSTEM', 'STATUS',    'OVERVIEW / №01'],
-    agents:    ['MODEL',  'AGENTS',    'OVERVIEW / №02'],
-    teams:     ['WORKING','TEAMS',     'OVERVIEW / №03'],
-    skills:    ['SKILL',  'REGISTRY',  'OVERVIEW / №04'],
-    mcp:       ['MCP',    'SERVERS',   'OVERVIEW / №05'],
-    messaging: ['MSG',    'ADAPTERS',  'OVERVIEW / №06'],
-    chat:      ['LIVE',   'CHAT',      'OVERVIEW / №07'],
-    creds:     ['API',    'CREDENTIALS','OVERVIEW / №08'],
+    status:    ['SYSTEM', 'STATUS',      'OVERVIEW / №01'],
+    agents:    ['MODEL',  'AGENTS',      'OVERVIEW / №02'],
+    teams:     ['WORKING','TEAMS',       'OVERVIEW / №03'],
+    roles:     ['ROLE',   'REGISTRY',    'OVERVIEW / №04'],
+    skills:    ['SKILL',  'REGISTRY',    'OVERVIEW / №05'],
+    mcp:       ['MCP',    'SERVERS',     'OVERVIEW / №06'],
+    messaging: ['MSG',    'ADAPTERS',    'OVERVIEW / №07'],
+    chat:      ['LIVE',   'CHAT',        'OVERVIEW / №08'],
+    creds:     ['API',    'CREDENTIALS', 'OVERVIEW / №09'],
   };
   const [prefix, accent, overview] = titles[name] || [name.toUpperCase(), '', ''];
   $('view-title').innerHTML = prefix + (accent ? ' <span class="title-accent">' + accent + '</span>' : '');
   $('view-overview').textContent = overview;
 
-  ['status','agents','teams','skills','mcp','messaging','chat','creds'].forEach(t => {
+  ['status','agents','teams','roles','skills','mcp','messaging','chat','creds'].forEach(t => {
     const content = $('tab-' + t);
     if (content) content.classList.toggle('active', t === name);
 
@@ -1007,11 +1118,12 @@ function switchTab(name) {
     if (ntab) {
       ntab.classList.toggle('active', t === name);
       const arrow = ntab.querySelector('.nav-arrow');
-      if (arrow) arrow.style.display = t === name ? '' : 'none';
+      if (arrow) (arrow as HTMLElement).style.display = t === name ? '' : 'none';
     }
   });
   if (name === 'agents') loadAgents();
   if (name === 'teams')  loadTeams();
+  if (name === 'roles')  loadTeams();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1727,8 +1839,10 @@ function showMsg(id, text, cls) {
 // ═══════════════════════════════════════════════════════════════
 //  Agents tab — CRUD
 // ═══════════════════════════════════════════════════════════════
-let agentEditId = null;   // null = create mode, string = edit mode
-let agentsData  = { list: [], defaults: {} };
+let agentEditId    = null;   // null = create mode, string = edit mode
+let agentsData     = { list: [], defaults: {} };
+let selectedAgentId = null;
+let agentFilter    = 'all';
 
 async function loadAgents() {
   try {
@@ -1741,52 +1855,108 @@ async function loadAgents() {
 }
 
 function renderDefaults(d) {
-  $('def-model').textContent   = d.model?.primary   || '(none)';
-  $('def-tools').textContent   = d.tools?.profile    || '(none)';
-  $('def-sandbox').textContent = d.sandbox?.mode     || '(none)';
-  $('def-timeout').textContent = d.timeoutSeconds    ? d.timeoutSeconds + 's' : '(none)';
-  $('def-daily').textContent   = d.budget?.dailyTokens   ? d.budget.dailyTokens.toLocaleString() : '(none)';
-  $('def-monthly').textContent = d.budget?.monthlyTokens ? d.budget.monthlyTokens.toLocaleString() : '(none)';
-  $('def-cost').textContent    = d.budget?.monthlyCost   ? '$' + d.budget.monthlyCost : '(none)';
+  // Hidden spans kept for modal compatibility
+  $('def-model').textContent   = d.model?.primary   || '';
+  $('def-tools').textContent   = d.tools?.profile    || '';
+  $('def-sandbox').textContent = d.sandbox?.mode     || '';
+  $('def-timeout').textContent = d.timeoutSeconds    ? d.timeoutSeconds + 's' : '';
+  $('def-daily').textContent   = d.budget?.dailyTokens   ? d.budget.dailyTokens.toLocaleString() : '';
+  $('def-monthly').textContent = d.budget?.monthlyTokens ? d.budget.monthlyTokens.toLocaleString() : '';
+  $('def-cost').textContent    = d.budget?.monthlyCost   ? '$' + d.budget.monthlyCost : '';
+  // Show default model badge in header
+  const badge = $('def-model-badge');
+  if (badge) badge.textContent = d.model?.primary ? 'DEFAULT · ' + (d.model.primary.split('/').pop() || d.model.primary) : '';
+}
+
+function setAgentFilter(f) {
+  agentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.classList.toggle('active', (b as HTMLElement).dataset.filter === f);
+  });
+  renderRoster(agentsData.list || []);
 }
 
 function renderAgentCards(list) {
-  const grid = $('agents-grid');
-  if (!list || list.length === 0) {
-    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No agents configured yet. Click <strong>+ Add Agent</strong> to create one.</div>';
+  renderRoster(list);
+  // If selected agent was removed, clear dossier
+  if (selectedAgentId && !list.find(a => a.id === selectedAgentId)) {
+    selectedAgentId = null;
+    $('agents-dossier').innerHTML = '<div class="dossier-empty">SELECT AN AGENT</div>';
+  } else if (selectedAgentId) {
+    const a = list.find(x => x.id === selectedAgentId);
+    if (a) renderAgentDossier(a, list);
+  }
+}
+
+function renderRoster(list) {
+  const roster = $('agents-roster');
+  const filtered = agentFilter === 'all' ? list : list.filter(_a => agentFilter === 'offline');
+  if (!filtered || filtered.length === 0) {
+    roster.innerHTML = '<div class="empty" style="padding:24px 16px">' + (list.length === 0 ? 'No agents enrolled yet.' : 'No agents match filter.') + '</div>';
     return;
   }
-  grid.innerHTML = list.map(a => {
-    const model   = (a.model?.primary || '').split('/').pop() || '—';
-    const profile = a.tools?.profile || '';
-    const sandbox = a.sandbox?.mode  || '';
+  roster.innerHTML = filtered.map((a, i) => {
+    const model = (a.model?.primary || '').split('/').pop() || '—';
+    const isSelected = a.id === selectedAgentId;
     const aid = esc(a.id);
-    const name = a.name ? esc(a.name) : '';
-    const avatarHtml = a.avatarUrl 
-      ? \`<img src="\${esc(a.avatarUrl)}" class="agent-avatar" onerror="this.outerHTML='<div class=\\'agent-avatar-placeholder\\'>\${aid[0].toUpperCase()}</div>'">\`
-      : \`<div class="agent-avatar-placeholder">\${aid[0].toUpperCase()}</div>\`;
-
-    return '<div class="agent-card">'
-      + '<div class="agent-card-header">'
-      +   avatarHtml
-      +   '<div class="agent-card-info">'
-      +     '<div class="agent-card-id">' + aid + '</div>'
-      +     (name ? '<div class="agent-card-name">' + name + '</div>' : '')
-      +     (a.default ? '<div class="agent-card-def">★ default</div>' : '')
-      +   '</div>'
-      + '</div>'
-      + (a.personality ? '<div class="agent-card-personality">' + esc(a.personality) + '</div>' : '')
-      + (a.model?.primary ? '<div class="agent-card-row">model <span>' + esc(model) + '</span></div>' : '')
-      + (a.workspace && a.workspace !== '.' ? '<div class="agent-card-row">workspace <span>' + esc(a.workspace) + '</span></div>' : '')
-      + (profile  ? '<div class="agent-card-row">tools <span>' + esc(profile)  + '</span></div>' : '')
-      + (sandbox  ? '<div class="agent-card-row">sandbox <span>' + esc(sandbox) + '</span></div>' : '')
-      + '<div class="agent-card-actions">'
-      +   '<button class="btn" style="font-size:11px" data-aid="' + aid + '" onclick="editAgentById(this.dataset.aid)">Edit</button>'
-      +   (a.default ? '' : '<button class="btn" style="font-size:11px" data-aid="' + aid + '" onclick="setDefaultAgent(this.dataset.aid)">Set default</button>')
-      +   '<button class="btn danger" style="font-size:11px;margin-left:auto" data-aid="' + aid + '" onclick="deleteAgent(this.dataset.aid)">Delete</button>'
-      + '</div>'
+    const statusColor = a.default ? 'var(--accent)' : 'var(--muted)';
+    const statusLabel = a.default ? 'DEFAULT' : 'IDLE';
+    return '<div class="roster-row' + (isSelected ? ' selected' : '') + '" data-aid="' + aid + '" onclick="selectAgent(this.dataset.aid)">'
+      + '<div class="r-num">' + String(i + 1).padStart(2, '0') + '</div>'
+      + '<div class="r-id">' + aid + (a.name ? '<small>' + esc(a.name) + '</small>' : '') + '</div>'
+      + '<div class="r-model">' + esc(model) + '</div>'
+      + '<div class="r-stat">—</div>'
+      + '<div class="r-stat">—</div>'
+      + '<div class="r-stat" style="color:' + statusColor + '">' + statusLabel + '</div>'
       + '</div>';
   }).join('');
+}
+
+function selectAgent(id) {
+  selectedAgentId = id;
+  // Update row selection highlight
+  document.querySelectorAll('.roster-row').forEach(r => {
+    r.classList.toggle('selected', (r as HTMLElement).dataset.aid === id);
+  });
+  const a = (agentsData.list || []).find(x => x.id === id);
+  if (a) renderAgentDossier(a, agentsData.list || []);
+}
+
+function renderAgentDossier(a, list) {
+  const idx = list.findIndex(x => x.id === a.id);
+  const num = String(idx + 1).padStart(3, '0');
+  const model    = a.model?.primary  || '—';
+  const modelShort = model.split('/').pop() || model;
+  const provider = model.includes('/') ? model.split('/')[0] : '—';
+  const tools    = a.tools?.profile  || '—';
+  const sandbox  = a.sandbox?.mode   || '—';
+  const timeout  = a.timeoutSeconds  ? a.timeoutSeconds + 's' : (agentsData.defaults as any)?.timeoutSeconds ? (agentsData.defaults as any).timeoutSeconds + 's' : '—';
+  const statusLabel = a.default ? 'DEFAULT' : 'IDLE';
+  const statusColor = a.default ? 'var(--accent)' : 'var(--muted)';
+  const aid = esc(a.id);
+
+  $('agents-dossier').innerHTML =
+    '<div class="dossier-num">AGENT №' + num + '</div>'
+    + '<div class="dossier-name">' + aid + '</div>'
+    + '<div class="dossier-pill-row">'
+    +   '<span class="badge" style="color:' + statusColor + '">' + statusLabel + '</span>'
+    +   '<span class="dossier-provider">' + esc(provider) + '</span>'
+    + '</div>'
+    + (a.personality ? '<div class="dossier-desc">' + esc(a.personality) + '</div>' : '')
+    + '<div class="dossier-config-label">MODEL CONFIG</div>'
+    + '<div class="dossier-config">'
+    +   '<div class="dossier-config-cell"><div class="dossier-config-cell-label">MODEL</div><div class="dossier-config-cell-val">' + esc(modelShort) + '</div></div>'
+    +   '<div class="dossier-config-cell"><div class="dossier-config-cell-label">PROVIDER</div><div class="dossier-config-cell-val">' + esc(provider) + '</div></div>'
+    +   '<div class="dossier-config-cell"><div class="dossier-config-cell-label">TOOLS</div><div class="dossier-config-cell-val">' + esc(tools) + '</div></div>'
+    +   '<div class="dossier-config-cell"><div class="dossier-config-cell-label">SANDBOX</div><div class="dossier-config-cell-val">' + esc(sandbox) + '</div></div>'
+    +   '<div class="dossier-config-cell"><div class="dossier-config-cell-label">TIMEOUT</div><div class="dossier-config-cell-val">' + esc(timeout) + '</div></div>'
+    +   '<div class="dossier-config-cell"><div class="dossier-config-cell-label">WORKSPACE</div><div class="dossier-config-cell-val">' + esc(a.workspace || '.') + '</div></div>'
+    + '</div>'
+    + '<div class="dossier-actions">'
+    +   '<button class="btn primary" style="font-size:11px" data-aid="' + aid + '" onclick="editAgentById(this.dataset.aid)">Edit</button>'
+    +   (!a.default ? '<button class="btn" style="font-size:11px" data-aid="' + aid + '" onclick="setDefaultAgent(this.dataset.aid)">Set Default</button>' : '')
+    +   '<button class="btn danger" style="font-size:11px;margin-left:auto" data-aid="' + aid + '" onclick="deleteAgent(this.dataset.aid)">Delete</button>'
+    + '</div>';
 }
 
 function editAgentById(id) {
@@ -2010,9 +2180,11 @@ function showAgMsg(id, text, cls) {
 //  Teams tab — Roles & Teams CRUD
 // ═══════════════════════════════════════════════════════════════
 let teamsData = { roles: [], teams: [], agents: [] };
-let roleEditId = null;   // null = create, string = edit
-let teamEditId = null;
-let runTeamId  = null;
+let roleEditId    = null;   // null = create, string = edit
+let teamEditId    = null;
+let runTeamId     = null;
+let selectedRoleId = null;
+let selectedTeamId = null;
 
 async function loadTeams() {
   try {
@@ -2026,62 +2198,133 @@ async function loadTeams() {
 
 // ── Roles render ────────────────────────────────────────────────
 function renderRoles(roles) {
-  const grid = $('roles-grid');
+  const roster = $('roles-roster');
+  if (!roster) return;
   if (!roles || roles.length === 0) {
-    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No roles yet. Click <strong>+ New Role</strong> to define a position.</div>';
+    roster.innerHTML = '<div class="empty" style="padding:24px 16px">No roles defined yet.</div>';
+    if (selectedRoleId) { selectedRoleId = null; const d = $('roles-dossier'); if (d) d.innerHTML = '<div class="dossier-empty">SELECT A ROLE</div>'; }
     return;
   }
-  grid.innerHTML = roles.map(r => {
-    const delegates = (r.canDelegateTo || []).join(', ');
-    const respItems = (r.responsibilities || []).map(x => '<li>' + esc(x) + '</li>').join('');
+  roster.innerHTML = roles.map((r, i) => {
     const rid = esc(r.id);
-    return '<div class="role-card">'
-      + '<div class="role-card-name">' + esc(r.name) + '</div>'
-      + '<div class="role-card-desc">' + esc(r.description || '') + '</div>'
-      + (respItems ? '<div class="role-card-resp"><div class="role-card-resp-title">Responsibilities</div><ul>' + respItems + '</ul></div>' : '')
-      + (delegates ? '<div class="role-card-delegate">Can delegate to: <span>' + esc(delegates) + '</span></div>' : '')
-      + '<div class="role-card-actions">'
-      +   '<button class="btn" style="font-size:11px" data-rid="' + rid + '" onclick="editRoleById(this.dataset.rid)">Edit</button>'
-      +   '<button class="btn danger" style="font-size:11px;margin-left:auto" data-rid="' + rid + '" onclick="deleteRole(this.dataset.rid)">Delete</button>'
-      + '</div>'
+    const delegateCount = (r.canDelegateTo || []).length;
+    const isSelected = r.id === selectedRoleId;
+    return '<div class="roster-row' + (isSelected ? ' selected' : '') + '" style="grid-template-columns:36px 1fr 1.5fr 1fr" data-rid="' + rid + '" onclick="selectRole(this.dataset.rid)">'
+      + '<div class="r-num">' + String(i + 1).padStart(2, '0') + '</div>'
+      + '<div class="r-id">' + esc(r.name) + '</div>'
+      + '<div class="r-model">' + rid + '</div>'
+      + '<div class="r-stat">' + (delegateCount ? delegateCount + ' roles' : '—') + '</div>'
       + '</div>';
   }).join('');
+  // Refresh dossier if a role is selected
+  if (selectedRoleId) {
+    const sel = roles.find(r => r.id === selectedRoleId);
+    if (sel) renderRoleDossier(sel, roles);
+  }
+}
+
+function selectRole(id) {
+  selectedRoleId = id;
+  document.querySelectorAll('#roles-roster .roster-row').forEach(r => {
+    r.classList.toggle('selected', (r as HTMLElement).dataset.rid === id);
+  });
+  const role = (teamsData.roles || []).find(r => r.id === id);
+  if (role) renderRoleDossier(role, teamsData.roles || []);
+}
+
+function renderRoleDossier(role, roles) {
+  const idx = roles.findIndex(r => r.id === role.id);
+  const num = String(idx + 1).padStart(3, '0');
+  const rid = esc(role.id);
+  const delegates = (role.canDelegateTo || []);
+  const resp = (role.responsibilities || []);
+
+  $('roles-dossier').innerHTML =
+    '<div class="dossier-num">ROLE №' + num + '</div>'
+    + '<div class="dossier-name">' + esc(role.name) + '</div>'
+    + '<div class="dossier-pill-row">'
+    +   '<span class="badge" style="color:var(--accent)">' + rid + '</span>'
+    + '</div>'
+    + (role.description ? '<div class="dossier-desc">' + esc(role.description) + '</div>' : '')
+    + (resp.length ? '<div class="dossier-config-label">RESPONSIBILITIES</div><ul class="dossier-resp-list">' + resp.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '')
+    + (delegates.length ? '<div class="dossier-config-label">CAN DELEGATE TO</div><div class="dossier-delegate">' + delegates.map(d => '<span>' + esc(d) + '</span>').join(' · ') + '</div>' : '')
+    + (role.systemPromptPrefix ? '<div class="dossier-config-label">SYSTEM PROMPT</div><div class="dossier-sysprompt">' + esc(role.systemPromptPrefix) + '</div>' : '')
+    + '<div class="dossier-actions">'
+    +   '<button class="btn primary" style="font-size:11px" data-rid="' + rid + '" onclick="editRoleById(this.dataset.rid)">Edit</button>'
+    +   '<button class="btn danger" style="font-size:11px;margin-left:auto" data-rid="' + rid + '" onclick="deleteRole(this.dataset.rid)">Delete</button>'
+    + '</div>';
 }
 
 // ── Teams render ────────────────────────────────────────────────
 function renderTeams(teams, roles) {
-  const grid = $('teams-grid');
+  const roster = $('teams-roster');
+  if (!roster) return;
   if (!teams || teams.length === 0) {
-    grid.innerHTML = '<div class="empty">No teams yet. Click <strong>+ New Team</strong> to create one.</div>';
+    roster.innerHTML = '<div class="empty" style="padding:24px 16px">No teams yet.</div>';
+    if (selectedTeamId) { selectedTeamId = null; const d = $('teams-dossier'); if (d) d.innerHTML = '<div class="dossier-empty">SELECT A TEAM</div>'; }
     return;
   }
   const roleMap = {};
   roles.forEach(r => { roleMap[r.id] = r; });
 
-  grid.innerHTML = teams.map(t => {
+  roster.innerHTML = teams.map((t, i) => {
     const tid = esc(t.id);
-    const slotHtml = (t.members || []).map(m => {
-      const isLead = m.agentId === t.leadAgentId;
-      const roleName = roleMap[m.roleId] ? roleMap[m.roleId].name : m.roleId;
-      return '<div class="org-slot' + (isLead ? ' lead' : '') + '">'
-        + '<div class="org-slot-role">' + esc(roleName) + (isLead ? ' ★ lead' : '') + '</div>'
-        + '<div class="org-slot-agent">@' + esc(m.agentId) + '</div>'
-        + '</div>';
-    }).join('');
-    return '<div class="team-card">'
-      + '<div class="team-card-header">'
-      +   '<div class="team-card-name">🏢 ' + esc(t.name) + '</div>'
-      +   '<div class="team-card-lead">lead: <span>' + esc(t.leadAgentId) + '</span></div>'
-      + '</div>'
-      + (t.sharedGoal ? '<div class="team-card-goal">"' + esc(t.sharedGoal) + '"</div>' : '')
-      + '<div class="org-chart">' + (slotHtml || '<span class="empty">no members</span>') + '</div>'
-      + '<div class="team-card-actions">'
-      +   '<button class="btn" style="font-size:11px" data-tid="' + tid + '" onclick="editTeamById(this.dataset.tid)">Edit</button>'
-      +   '<button class="btn primary" style="font-size:11px" data-tid="' + tid + '" onclick="openRunModal(this.dataset.tid)">▶ Run</button>'
-      +   '<button class="btn danger" style="font-size:11px;margin-left:auto" data-tid="' + tid + '" onclick="deleteTeam(this.dataset.tid)">Delete</button>'
-      + '</div>'
+    const memberCount = (t.members || []).length;
+    const isSelected = t.id === selectedTeamId;
+    return '<div class="roster-row' + (isSelected ? ' selected' : '') + '" style="grid-template-columns:36px 1fr 1.5fr 0.7fr" data-tid="' + tid + '" onclick="selectTeam(this.dataset.tid)">'
+      + '<div class="r-num">' + String(i + 1).padStart(2, '0') + '</div>'
+      + '<div class="r-id">' + esc(t.name) + '</div>'
+      + '<div class="r-model">' + esc(t.leadAgentId || '—') + '</div>'
+      + '<div class="r-stat">' + memberCount + '</div>'
       + '</div>';
   }).join('');
+  // Refresh dossier if a team is selected
+  if (selectedTeamId) {
+    const sel = teams.find(t => t.id === selectedTeamId);
+    if (sel) renderTeamDossier(sel, teams, roleMap);
+  }
+}
+
+function selectTeam(id) {
+  selectedTeamId = id;
+  document.querySelectorAll('#teams-roster .roster-row').forEach(r => {
+    r.classList.toggle('selected', (r as HTMLElement).dataset.tid === id);
+  });
+  const team = (teamsData.teams || []).find(t => t.id === id);
+  const roleMap = {};
+  (teamsData.roles || []).forEach(r => { roleMap[r.id] = r; });
+  if (team) renderTeamDossier(team, teamsData.teams || [], roleMap);
+}
+
+function renderTeamDossier(team, teams, roleMap) {
+  const idx = teams.findIndex(t => t.id === team.id);
+  const num = String(idx + 1).padStart(3, '0');
+  const tid = esc(team.id);
+  const members = team.members || [];
+
+  const memberSlots = members.map(m => {
+    const isLead = m.agentId === team.leadAgentId;
+    const roleName = roleMap[m.roleId] ? roleMap[m.roleId].name : (m.roleId || '—');
+    return '<div class="member-slot' + (isLead ? ' lead' : '') + '">'
+      + '<div class="member-slot-role">' + esc(roleName) + (isLead ? ' · LEAD' : '') + '</div>'
+      + '<div class="member-slot-agent">@' + esc(m.agentId) + '</div>'
+      + '</div>';
+  }).join('');
+
+  $('teams-dossier').innerHTML =
+    '<div class="dossier-num">TEAM №' + num + '</div>'
+    + '<div class="dossier-name">' + esc(team.name) + '</div>'
+    + '<div class="dossier-pill-row">'
+    +   '<span class="badge" style="color:var(--accent)">LEAD · ' + esc(team.leadAgentId || '—') + '</span>'
+    + '</div>'
+    + (team.sharedGoal ? '<div class="dossier-goal">' + esc(team.sharedGoal) + '</div>' : '')
+    + '<div class="dossier-config-label">MEMBERS (' + members.length + ')</div>'
+    + (members.length ? '<div class="member-list">' + memberSlots + '</div>' : '<div class="empty" style="margin-bottom:20px">No members assigned.</div>')
+    + '<div class="dossier-actions">'
+    +   '<button class="btn primary" style="font-size:11px" data-tid="' + tid + '" onclick="editTeamById(this.dataset.tid)">Edit</button>'
+    +   '<button class="btn" style="font-size:11px" data-tid="' + tid + '" onclick="openRunModal(this.dataset.tid)">▶ Run</button>'
+    +   '<button class="btn danger" style="font-size:11px;margin-left:auto" data-tid="' + tid + '" onclick="deleteTeam(this.dataset.tid)">Delete</button>'
+    + '</div>';
 }
 
 // ── Role modal ──────────────────────────────────────────────────
