@@ -1890,15 +1890,22 @@ function renderAgentCards(list) {
   }
 }
 
-function agentAvatar(id, size) {
+function agentAvatar(id, size, avatarUrl) {
+  const s = size || 24;
+  if (avatarUrl) {
+    return '<img src="' + esc(avatarUrl) + '" width="' + s + '" height="' + s + '" '
+      + 'data-id="' + esc(id) + '" data-sz="' + s + '" '
+      + 'onerror="this.outerHTML=agentAvatar(this.dataset.id,+this.dataset.sz)" '
+      + 'style="display:block;flex-shrink:0;border-radius:50%;object-fit:cover;border:1px solid var(--border)">';
+  }
   const palette = ['#8B7355','#6B8E7F','#7B6B8E','#8E7B6B','#6B8E8E','#8E6B7B','#7B8E6B','#8E8E6B'];
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffff;
   const col = palette[h % palette.length];
   const initials = id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 2).toUpperCase() || '??';
-  const fs = Math.round(size * 0.36);
-  const r = size / 2;
-  return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" xmlns="http://www.w3.org/2000/svg" style="display:block;flex-shrink:0">'
+  const fs = Math.round(s * 0.36);
+  const r = s / 2;
+  return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 ' + s + ' ' + s + '" xmlns="http://www.w3.org/2000/svg" style="display:block;flex-shrink:0">'
     + '<circle cx="' + r + '" cy="' + r + '" r="' + (r - 1) + '" fill="' + col + '22" stroke="' + col + '" stroke-width="1.2"/>'
     + '<text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-family="monospace" font-size="' + fs + '" font-weight="700" fill="' + col + '" letter-spacing="0.04em">' + initials + '</text>'
     + '</svg>';
@@ -1919,7 +1926,7 @@ function renderRoster(list) {
     const statusLabel = a.default ? 'DEFAULT' : 'IDLE';
     return '<div class="roster-row' + (isSelected ? ' selected' : '') + '" data-aid="' + aid + '" onclick="selectAgent(this.dataset.aid)">'
       + '<div class="r-num">' + String(i + 1).padStart(2, '0') + '</div>'
-      + '<div class="r-avatar">' + agentAvatar(a.id, 22) + '</div>'
+      + '<div class="r-avatar">' + agentAvatar(a.id, 22, a.avatarUrl) + '</div>'
       + '<div class="r-id">' + aid + (a.name ? '<small>' + esc(a.name) + '</small>' : '') + '</div>'
       + '<div class="r-model">' + esc(model) + '</div>'
       + '<div class="r-stat">—</div>'
@@ -1960,7 +1967,7 @@ function renderAgentDossier(a, list) {
     +   '<span class="badge" style="color:' + statusColor + '">' + statusLabel + '</span>'
     +   '<span class="dossier-provider">' + esc(provider) + '</span>'
     + '</div>'
-    + '<div class="dossier-avatar">' + agentAvatar(a.id, 60) + '</div>'
+    + '<div class="dossier-avatar">' + agentAvatar(a.id, 60, a.avatarUrl) + '</div>'
     + '</div>'
     + (a.personality ? '<div class="dossier-desc">' + esc(a.personality) + '</div>' : '')
     + '<div class="dossier-config-label">MODEL CONFIG</div>'
