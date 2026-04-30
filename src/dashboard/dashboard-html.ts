@@ -261,6 +261,21 @@ tr:hover td { background: rgba(200,144,72,0.06); }
 .msg-bubble { border-radius: 16px !important; padding: 12px 18px !important; font-size: 14px !important; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 #chat-input-row { padding: 20px 24px; background: var(--bg-card); border-top: 1px solid var(--border); }
 #chat-input { border-radius: 12px !important; padding: 12px 16px !important; }
+/* ── Tool Approval Card ─────────────────────────────────── */
+.approval-card { background: var(--bg-card); border: 1px solid #c4954a; border-left: 3px solid #c4954a; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; animation: slideIn 0.15s ease; }
+@keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.approval-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.approval-title { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.18em; color: #c4954a; text-transform: uppercase; }
+.approval-countdown { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+.approval-countdown.urgent { color: var(--red); }
+.approval-tool { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--text); }
+.approval-reason { font-size: 11px; color: var(--muted); font-style: italic; }
+.approval-input { background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-family: var(--font-mono); font-size: 10px; color: var(--muted); max-height: 80px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+.approval-actions { display: flex; gap: 8px; margin-top: 2px; }
+.approval-actions .btn-approve { background: #2a4a2a; color: #6fcf6f; border: 1px solid #4a7a4a; padding: 7px 20px; border-radius: 8px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; cursor: pointer; letter-spacing: 0.1em; transition: background 0.1s; }
+.approval-actions .btn-approve:hover { background: #3a6a3a; }
+.approval-actions .btn-deny { background: #4a2020; color: #cf6f6f; border: 1px solid #7a4040; padding: 7px 20px; border-radius: 8px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; cursor: pointer; letter-spacing: 0.1em; transition: background 0.1s; }
+.approval-actions .btn-deny:hover { background: #6a2a2a; }
 
 /* Modals */
 .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 100; display: none; align-items: center; justify-content: center; }
@@ -1337,6 +1352,7 @@ let chatWs = null;
 let chatConnected = false;
 let streamingMsgEl = null;  // current streaming bubble element
 let streamingContent = '';
+const approvalTimers = new Map(); // requestId → intervalId
 
 function populateChatAgents(agents) {
   const sel = $('chat-agent');
@@ -1493,6 +1509,11 @@ function chatConnect(token) {
         $('chat-input').focus();
         break;
       }
+      case 'tool:approval:request': {
+        const p = msg.payload || {};
+        showApprovalCard(p.requestId, p.toolName, p.input, p.reason);
+        break;
+      }
       case 'error': {
         const p = msg.payload || {};
         appendChatNotice('⚠️ ' + (p.message || p.error || 'Server error'));
@@ -1550,6 +1571,72 @@ function appendChatNotice(text) {
   div.textContent = text;
   $('chat-messages').appendChild(div);
   scrollChatToBottom();
+}
+
+function showApprovalCard(requestId, toolName, input, reason) {
+  const TIMEOUT_S = 60;
+  let remaining = TIMEOUT_S;
+
+  const card = document.createElement('div');
+  card.className = 'approval-card';
+  card.dataset.rid = requestId;
+
+  const inputJson = JSON.stringify(input || {}, null, 2);
+
+  card.innerHTML =
+    '<div class="approval-header">'
+    + '<span class="approval-title">⚠ Tool Approval Required</span>'
+    + '<span class="approval-countdown" id="acd-' + requestId + '">' + TIMEOUT_S + 's</span>'
+    + '</div>'
+    + '<div class="approval-tool">' + esc(toolName) + '</div>'
+    + (reason ? '<div class="approval-reason">' + esc(reason) + '</div>' : '')
+    + '<div class="approval-input">' + esc(inputJson) + '</div>'
+    + '<div class="approval-actions">'
+    +   '<button class="btn-approve" onclick="respondApproval(\'' + requestId + '\', true)">✓ Approve</button>'
+    +   '<button class="btn-deny"    onclick="respondApproval(\'' + requestId + '\', false)">✗ Deny</button>'
+    + '</div>';
+
+  $('chat-messages').appendChild(card);
+  scrollChatToBottom();
+
+  const interval = setInterval(() => {
+    remaining--;
+    const el = document.getElementById('acd-' + requestId);
+    if (el) {
+      el.textContent = remaining + 's';
+      if (remaining <= 10) el.classList.add('urgent');
+    }
+    if (remaining <= 0) {
+      clearInterval(interval);
+      approvalTimers.delete(requestId);
+      dismissApprovalCard(requestId);
+      appendChatNotice('⏱ Tool approval timed out — ' + toolName + ' denied');
+    }
+  }, 1000);
+
+  approvalTimers.set(requestId, interval);
+}
+
+function respondApproval(requestId, approved) {
+  const timer = approvalTimers.get(requestId);
+  if (timer) { clearInterval(timer); approvalTimers.delete(requestId); }
+
+  if (chatWs && chatWs.readyState === WebSocket.OPEN) {
+    chatWs.send(JSON.stringify({
+      id: crypto.randomUUID(),
+      type: 'tool:approval:response',
+      timestamp: Date.now(),
+      payload: { requestId, approved },
+    }));
+  }
+
+  dismissApprovalCard(requestId);
+  appendChatNotice(approved ? '✓ Tool approved — continuing…' : '✗ Tool denied');
+}
+
+function dismissApprovalCard(requestId) {
+  const card = $('chat-messages').querySelector('[data-rid="' + requestId + '"]');
+  if (card) card.remove();
 }
 
 function scrollChatToBottom() {
