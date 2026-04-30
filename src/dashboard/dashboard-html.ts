@@ -3975,7 +3975,7 @@ function renderDag() {
       btnContainer.innerHTML = teams.map(tr =>
         '<button class="btn' + (dagSelectedTeam === tr.teamId ? ' active' : '') + '" '
         + 'style="font-size:9px;padding:3px 9px" '
-        + 'onclick="selectDagTeam(\'' + esc(tr.teamId) + '\')">'
+        + 'onclick="selectDagTeam(\\'' + esc(tr.teamId) + '\\')">\'
         + esc(tr.teamName || tr.teamId) + '</button>'
       ).join('');
       if (!dagSelectedTeam && teams.length) dagSelectedTeam = teams[0].teamId;
