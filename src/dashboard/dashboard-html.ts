@@ -292,6 +292,30 @@ tr:hover td { background: rgba(200,144,72,0.06); }
 .approval-actions .btn-deny { background: #4a2020; color: #cf6f6f; border: 1px solid #7a4040; padding: 7px 20px; border-radius: 8px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; cursor: pointer; letter-spacing: 0.1em; transition: background 0.1s; }
 .approval-actions .btn-deny:hover { background: #6a2a2a; }
 
+/* ── Budget Progress Bars ───────────────────────────────── */
+.budget-bar-row { margin-bottom: 22px; }
+.budget-bar-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.budget-bar-key { font-family: var(--font-mono); font-size: 10px; letter-spacing: .22em; color: var(--muted); text-transform: uppercase; }
+.budget-bar-val { font-family: var(--font-mono); font-size: 11px; }
+.budget-bar-val .used { color: var(--accent); font-weight: 700; }
+.budget-bar-val .cap  { color: var(--dim); }
+.budget-bar-track-row { display: flex; align-items: center; gap: 12px; }
+.budget-bar-track { flex: 1; height: 6px; background: rgba(244,239,229,0.06); position: relative; overflow: hidden; }
+.theme-light .budget-bar-track { background: rgba(0,0,0,0.08); }
+.budget-bar-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); transition: width 0.4s ease; background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.18) 0, rgba(0,0,0,0.18) 1px, transparent 0, transparent 50%); background-size: 5px 5px; }
+.budget-bar-fill.warn { background-color: var(--yellow); }
+.budget-bar-fill.danger { background-color: var(--red); }
+.budget-bar-pct { font-family: var(--font-tactical); font-size: 24px; color: var(--text); line-height: 1; min-width: 50px; text-align: right; }
+.budget-bar-pct small { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-left: 2px; }
+.budget-spend { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border); display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; }
+.budget-spend-left {}
+.budget-spend-title { font-family: var(--font-mono); font-size: 10px; letter-spacing: .24em; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; }
+.budget-spend-amount { font-family: var(--font-tactical); font-size: 56px; line-height: 0.9; color: var(--text); letter-spacing: .005em; }
+.budget-spend-amount .accent { color: var(--accent); }
+.budget-spend-sub { font-family: var(--font-mono); font-size: 10px; letter-spacing: .18em; color: var(--muted); margin-top: 6px; }
+.budget-status-badge { padding: 6px 10px; border: 2px solid var(--accent); color: var(--accent); font-family: var(--font-tactical); font-size: 18px; letter-spacing: .10em; transform: rotate(-4deg); transform-origin: right bottom; white-space: nowrap; }
+.budget-status-badge.over { border-color: var(--red); color: var(--red); }
+
 /* Modals */
 .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 100; display: none; align-items: center; justify-content: center; }
 .modal-bg.open { display: flex; }
@@ -1532,21 +1556,51 @@ function renderSnapshot(s) {
   if (!b) {
     bw.innerHTML = '<div class="empty">no budget data</div>';
   } else {
-    function bar(label, used, limit) {
+    function budgetBar(label, used, limit, isCost) {
       if (!limit) return '';
       const pct = Math.min(100, Math.round(used / limit * 100));
-      const cls = pct >= 90 ? 'danger' : pct >= 70 ? 'warn' : 'ok';
-      const fmt = n => n >= 1000 ? (n/1000).toFixed(1)+'k' : n;
-      return '<div class="budget-row">'
-        + '<div class="budget-label"><span>' + label + '</span>'
-        + '<span class="pct">' + fmt(used) + ' / ' + fmt(limit) + ' &nbsp;' + pct + '%</span></div>'
-        + '<div class="bar-track"><div class="bar-fill ' + cls + '" style="width:' + pct + '%"></div></div>'
+      const cls = pct >= 90 ? 'danger' : pct >= 70 ? 'warn' : '';
+      const fmt = n => isCost ? '$' + n.toFixed(2) : (n >= 1e6 ? (n/1e6).toFixed(2)+'M' : n >= 1000 ? (n/1000).toFixed(1)+'k' : String(n));
+      const capFmt = isCost ? '$' + limit : fmt(limit);
+      return '<div class="budget-bar-row">'
+        + '<div class="budget-bar-header">'
+        +   '<span class="budget-bar-key">' + label + '</span>'
+        +   '<span class="budget-bar-val"><span class="used">' + fmt(used) + '</span><span class="cap"> / ' + capFmt + '</span></span>'
+        + '</div>'
+        + '<div class="budget-bar-track-row">'
+        +   '<div class="budget-bar-track"><div class="budget-bar-fill ' + cls + '" style="width:' + pct + '%"></div></div>'
+        +   '<span class="budget-bar-pct">' + pct + '<small>%</small></span>'
+        + '</div>'
         + '</div>';
     }
+
+    const costUsed  = b.monthlyCostUsed  || 0;
+    const costLimit = b.monthlyCostLimit || 0;
+    const costPct   = costLimit ? Math.min(100, costUsed / costLimit * 100) : 0;
+    const isOver    = costUsed > costLimit && costLimit > 0;
+
+    // Format the big cost display: split at last digit for accent colouring
+    function bigCost(n) {
+      const s = '$' + n.toFixed(2);
+      return s.slice(0, -1) + '<span class="accent">' + s.slice(-1) + '</span>';
+    }
+
+    const spendSection = costLimit > 0
+      ? '<div class="budget-spend">'
+        + '<div class="budget-spend-left">'
+        +   '<div class="budget-spend-title">Spend to date</div>'
+        +   '<div class="budget-spend-amount">' + bigCost(costUsed) + '</div>'
+        +   '<div class="budget-spend-sub">Of $' + costLimit.toFixed(0) + ' monthly cap &middot; ' + costPct.toFixed(1) + '% utilized</div>'
+        + '</div>'
+        + '<div class="budget-status-badge' + (isOver ? ' over' : '') + '">' + (isOver ? 'OVER CAP' : 'UNDER CAP') + '</div>'
+        + '</div>'
+      : '';
+
     bw.innerHTML =
-      bar('Daily tokens',    b.dailyUsed   || 0, b.dailyLimit   || 0) +
-      bar('Monthly tokens',  b.monthlyUsed || 0, b.monthlyLimit || 0) +
-      bar('Monthly cost $',  b.monthlyCostUsed || 0, b.monthlyCostLimit || 0);
+      budgetBar('Daily tokens',   b.dailyUsed   || 0, b.dailyLimit   || 0, false) +
+      budgetBar('Monthly tokens', b.monthlyUsed || 0, b.monthlyLimit || 0, false) +
+      budgetBar('Monthly cost',   costUsed,           costLimit,            true)  +
+      spendSection;
   }
 
   // Skills
