@@ -201,6 +201,7 @@ export class TeamRoutes {
 
       const { ModelRouter }     = await import('../models/model-router.js');
       const { SessionStore }    = await import('../sessions/session-store.js');
+      const { CredentialStore } = await import('../auth/credential-store.js');
       const { PolicyEngine }    = await import('../tools/policy-engine.js');
       const { SandboxManager }  = await import('../tools/sandbox-interface.js');
       const { ThreatDetector }  = await import('../security/threat-detector.js');
@@ -216,7 +217,8 @@ export class TeamRoutes {
       const masterKey = process.env.AI_DESK_MASTER_KEY ?? '';
       const dataDir   = process.env.AI_DESK_DATA_DIR   ?? './.ai-desk-data';
 
-      const router    = new ModelRouter(config.agents.defaults.model, config.agents.defaults.subagents.model);
+      const credStore = new CredentialStore(dataDir, masterKey);
+      const router    = new ModelRouter(config.agents.defaults.model, config.agents.defaults.subagents.model, credStore);
       const sessions  = new SessionStore(dataDir, masterKey);
       const policy    = new PolicyEngine(config.agents.defaults.tools);
       const sandbox   = new SandboxManager(config.agents.defaults.sandbox);
@@ -256,6 +258,7 @@ export class TeamRoutes {
       sessions.close_db();
       budget.close();
       cache.close();
+      credStore.close();
 
       this.json(res, result);
     } catch (err) {
