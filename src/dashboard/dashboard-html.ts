@@ -3464,7 +3464,7 @@ async function loadWebhooks() {
         + '<div style="margin-top:10px;padding:8px 10px;background:var(--bg-card);border-radius:8px;font-family:var(--font-mono);font-size:11px;color:var(--muted)">'
         + '<div style="margin-bottom:2px">curl -X POST ' + esc(wh.url) + ' \\\\</div>'
         + '<div style="margin-bottom:2px;padding-left:16px">-H "Authorization: Bearer ' + esc(wh.secret) + '" \\\\</div>'
-        + '<div style="padding-left:16px">-d \'{"key":"value"}\'</div>'
+        + '<div style="padding-left:16px">-d &#39;{"key":"value"}&#39;</div>'
         + '</div>'
         + '</div>';
     }).join('');
