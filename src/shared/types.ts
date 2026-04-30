@@ -65,6 +65,13 @@ export type GatewayEvent =
   | 'team:start'
   | 'team:complete'
   | 'team:failed'
+  // Workspace task events (emitted per individual task within a team run)
+  | 'task:created'   // lead agent parsed tasks — one per task
+  | 'task:started'   // task began executing
+  | 'task:done'      // task finished successfully
+  | 'task:failed'    // task finished with error
+  | 'task:skipped'   // task skipped (dependency failed)
+  | 'task:step'      // sub-step update (thinking / tool_use / tool_result)
   // Dashboard events
   | 'dashboard:client-connected'
   | 'dashboard:client-disconnected'

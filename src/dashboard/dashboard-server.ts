@@ -29,6 +29,8 @@ import { eventBus } from '../shared/events.js';
 import type { CredentialStore } from '../auth/credential-store.js';
 import type { AuthManager } from '../auth/auth-manager.js';
 import type { AuditLog } from '../security/audit-log.js';
+import { WorkspaceTracker } from '../workspace/workspace-tracker.js';
+import { WorkspaceRoutes } from '../workspace/workspace-routes.js';
 
 export interface AgentSnapshot {
   id: string;
@@ -109,6 +111,8 @@ export class DashboardServer {
   private sessionRoutes: SessionRoutes | null = null;
   private connectionRoutes: ConnectionRoutes | null = null;
   private auditLog: AuditLog | null = null;
+  private workspaceTracker: WorkspaceTracker;
+  private workspaceRoutes: WorkspaceRoutes;
 
   constructor(
     snapshotFn: () => DashboardSnapshot,
@@ -129,6 +133,12 @@ export class DashboardServer {
   ) {
     this.snapshotFn = snapshotFn;
     this.authManager = authManager;
+    this.workspaceTracker = new WorkspaceTracker();
+    this.workspaceRoutes  = new WorkspaceRoutes(this.workspaceTracker);
+    // Push workspace snapshot over SSE whenever any task or agent state changes
+    this.workspaceTracker.onChange = () => {
+      this.broadcast('workspace:update', this.workspaceTracker.snapshot());
+    };
     if (credStore) this.credentialRoutes = new CredentialRoutes(credStore);
     if (opts?.auditLog) this.auditLog = opts.auditLog;
     if (opts?.configPath) {
@@ -163,6 +173,9 @@ export class DashboardServer {
       this.broadcast('snapshot', this.snapshotFn());
     }, 10_000);
   }
+
+  /** Expose tracker so gateway can wire up WS push in Task #4. */
+  get tracker(): WorkspaceTracker { return this.workspaceTracker; }
 
   /** Wire up the MessagingManager after it has been started by the gateway. */
   setMessagingManager(mgr: import('../messaging/messaging-manager.js').MessagingManager): void {
@@ -207,6 +220,7 @@ export class DashboardServer {
     if (this.credentialRoutes?.handle(req, res)) return true;
     if (this.agentRoutes?.handle(req, res)) return true;
     if (this.teamRoutes?.handle(req, res)) return true;
+    if (this.workspaceRoutes.handle(req, res)) return true;
     if (this.webhookRoutes?.handle(req, res)) return true;
     if (this.cronRoutes?.handle(req, res)) return true;
     if (this.sessionRoutes?.handle(req, res)) return true;

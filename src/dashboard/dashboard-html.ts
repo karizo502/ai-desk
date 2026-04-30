@@ -375,6 +375,67 @@ tr:hover td { background: rgba(200,144,72,0.06); }
 /* keep avatar classes for modal compatibility */
 .agent-avatar { width: 40px; height: 40px; border-radius: 0; border: 1px solid var(--accent); object-fit: cover; }
 .agent-avatar-placeholder { width: 40px; height: 40px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; font-family: var(--font-tactical); }
+/* ── Workspace tab ───────────────────────────────────────────────── */
+.ws-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; }
+.ws-agent-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border: 1px solid var(--border); }
+.ws-agent-row { background: var(--bg); padding: 11px 14px; display: flex; align-items: center; gap: 12px; }
+.ws-agent-id { font-family: var(--font-mono); font-size: 11px; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-agent-badge { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.14em; padding: 3px 7px; border: 1px solid; }
+.ws-agent-badge.idle     { border-color: var(--muted); color: var(--muted); }
+.ws-agent-badge.thinking { border-color: var(--accent); color: var(--accent); animation: ws-pulse 1.2s ease-in-out infinite; }
+.ws-agent-badge.tool_use { border-color: var(--yellow); color: var(--yellow); }
+.ws-agent-badge.waiting  { border-color: var(--red); color: var(--red); }
+.ws-agent-detail { font-family: var(--font-mono); font-size: 9px; color: var(--muted); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@keyframes ws-pulse { 0%,100% { opacity:1; } 50% { opacity:0.45; } }
+.ws-task-filters { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+.ws-task-board { display: flex; flex-direction: column; gap: 2px; }
+.ws-task-card { background: var(--bg); border: 1px solid var(--border); padding: 10px 14px; display: grid; grid-template-columns: 14px 1fr auto auto; align-items: center; gap: 10px; transition: border-color 0.2s; }
+.ws-task-card.running  { border-left: 3px solid var(--accent); }
+.ws-task-card.done     { border-left: 3px solid var(--green); opacity: 0.7; }
+.ws-task-card.failed   { border-left: 3px solid var(--red); }
+.ws-task-card.skipped  { border-left: 3px solid var(--muted); opacity: 0.5; }
+.ws-task-card.pending  { border-left: 3px solid var(--border); }
+.ws-task-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.ws-task-dot.running  { background: var(--accent); animation: ws-pulse 1.2s ease-in-out infinite; }
+.ws-task-dot.done     { background: var(--green); }
+.ws-task-dot.failed   { background: var(--red); }
+.ws-task-dot.pending  { background: var(--border); }
+.ws-task-label { font-family: var(--font-mono); font-size: 11px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-task-meta  { font-family: var(--font-mono); font-size: 9px; color: var(--muted); white-space: nowrap; }
+.ws-task-agent { font-family: var(--font-mono); font-size: 9px; color: var(--muted); border: 1px solid var(--border); padding: 2px 6px; white-space: nowrap; }
+.ws-task-step  { font-family: var(--font-mono); font-size: 9px; color: var(--accent); margin-top: 3px; }
+.ws-team-header { padding: 8px 0 4px; font-family: var(--font-tactical); font-size: 12px; letter-spacing: 0.12em; color: var(--muted); border-bottom: 1px solid var(--border); margin-bottom: 4px; margin-top: 10px; display: flex; align-items: center; gap: 8px; }
+.ws-team-header:first-child { margin-top: 0; }
+.ws-team-status-dot { width: 7px; height: 7px; border-radius: 50%; }
+.ws-empty { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.14em; text-align: center; padding: 40px 0; }
+/* Flow DAG */
+.ws-dag-section { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 16px; }
+.ws-dag-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; cursor: pointer; user-select: none; }
+.ws-dag-title { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.22em; color: var(--muted); text-transform: uppercase; }
+.ws-dag-toggle { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+.ws-dag-canvas { overflow: auto; }
+svg.ws-dag-svg { display: block; }
+.dag-node { cursor: default; }
+.dag-node-rect { fill: var(--bg); stroke: var(--border); stroke-width: 1; rx: 0; }
+.dag-node-rect.pending  { stroke: var(--border); }
+.dag-node-rect.running  { stroke: var(--accent); stroke-width: 2; }
+.dag-node-rect.done     { stroke: var(--green); }
+.dag-node-rect.failed   { stroke: var(--red); }
+.dag-node-rect.skipped  { stroke: var(--muted); opacity: 0.5; }
+.dag-node-text { font-family: var(--font-mono); font-size: 9px; fill: var(--text-rgb, 255, 255, 255); dominant-baseline: middle; text-anchor: middle; pointer-events: none; }
+.dag-node-status { font-family: var(--font-mono); font-size: 8px; dominant-baseline: middle; text-anchor: middle; pointer-events: none; }
+.dag-node-status.running { fill: var(--accent); }
+.dag-node-status.done    { fill: var(--green);  }
+.dag-node-status.failed  { fill: var(--red);    }
+.dag-node-status.skipped { fill: var(--muted);  }
+.dag-node-status.pending { fill: var(--muted);  }
+.dag-edge { fill: none; stroke: var(--border); stroke-width: 1; }
+.dag-edge.active { stroke: var(--accent); }
+.dag-edge.done   { stroke: var(--green); }
+.dag-arrowhead { fill: var(--border); }
+.dag-arrowhead.active { fill: var(--accent); }
+.dag-arrowhead.done   { fill: var(--green); }
+.dag-pulse { animation: ws-pulse 1.2s ease-in-out infinite; }
 </style>
 
 </head>
@@ -403,6 +464,10 @@ tr:hover td { background: rgba(200,144,72,0.06); }
     <button class="nav-tab" id="ntab-teams" onclick="switchTab('teams')">
       <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="3"/><path d="M3 19c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="7" r="2"/><path d="M15 19c0-2.5 1.8-4.5 4-5"/></svg>
       Teams<span class="nav-arrow">→</span>
+    </button>
+    <button class="nav-tab" id="ntab-workspace" onclick="switchTab('workspace')">
+      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 17.5h7M17.5 14v7"/></svg>
+      Workspace
     </button>
     <button class="nav-tab" id="ntab-roles" onclick="switchTab('roles')">
       <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
@@ -644,6 +709,51 @@ tr:hover td { background: rgba(200,144,72,0.06); }
         </h3>
         <div id="teams-dossier" class="card-body" style="padding:20px 20px 24px">
           <div class="dossier-empty">SELECT A TEAM</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Workspace -->
+  <div class="content-area" id="tab-workspace">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="margin:0;font-family:var(--font-tactical);font-size:20px;letter-spacing:0.1em;text-transform:uppercase">WORKSPACE</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="ws-live-dot" style="width:7px;height:7px;border-radius:50%;background:var(--muted);display:inline-block"></span>
+        <span id="ws-live-label" style="font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:0.14em">LOADING</span>
+        <button class="btn" style="font-size:10px;padding:4px 10px" onclick="clearWorkspace()">Clear</button>
+      </div>
+    </div>
+    <div class="ws-grid">
+      <!-- LEFT: Agent Activity -->
+      <div>
+        <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.22em;color:var(--muted);margin-bottom:10px;text-transform:uppercase">Agent Activity</div>
+        <div id="ws-agents"><div class="ws-empty">NO AGENT DATA</div></div>
+      </div>
+      <!-- RIGHT: Task Board -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.22em;color:var(--muted);text-transform:uppercase">Task Board</div>
+          <div class="ws-task-filters">
+            <button class="btn active" id="wsf-all"     onclick="setWsFilter('all')"     style="font-size:9px;padding:3px 8px">ALL</button>
+            <button class="btn"        id="wsf-running" onclick="setWsFilter('running')" style="font-size:9px;padding:3px 8px">RUNNING</button>
+            <button class="btn"        id="wsf-done"    onclick="setWsFilter('done')"    style="font-size:9px;padding:3px 8px">DONE</button>
+            <button class="btn"        id="wsf-failed"  onclick="setWsFilter('failed')"  style="font-size:9px;padding:3px 8px">FAILED</button>
+          </div>
+        </div>
+        <div id="ws-tasks"><div class="ws-empty">NO TASKS YET — RUN A TEAM TO SEE WORK FLOW</div></div>
+      </div>
+    </div>
+    <!-- DAG Visualizer -->
+    <div class="ws-dag-section" id="ws-dag-section">
+      <div class="ws-dag-header" onclick="toggleDag()">
+        <span class="ws-dag-title">FLOW DIAGRAM</span>
+        <span class="ws-dag-toggle" id="ws-dag-toggle-btn">[SHOW]</span>
+      </div>
+      <div id="ws-dag-body" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap" id="ws-dag-team-btns"></div>
+        <div class="ws-dag-canvas" id="ws-dag-canvas">
+          <div class="ws-empty">SELECT A TEAM RUN ABOVE TO SEE ITS FLOW DIAGRAM</div>
         </div>
       </div>
     </div>
@@ -1418,6 +1528,7 @@ function switchTab(name) {
     status:    ['SYSTEM', 'STATUS',      'OVERVIEW / №01'],
     agents:    ['MODEL',  'AGENTS',      'OVERVIEW / №02'],
     teams:     ['WORKING','TEAMS',       'OVERVIEW / №03'],
+    workspace: ['LIVE',   'WORKSPACE',   'OVERVIEW / №03B'],
     roles:     ['ROLE',   'REGISTRY',    'OVERVIEW / №04'],
     skills:    ['SKILL',  'REGISTRY',    'OVERVIEW / №05'],
     mcp:       ['MCP',    'SERVERS',     'OVERVIEW / №06'],
@@ -1433,7 +1544,7 @@ function switchTab(name) {
   $('view-title').innerHTML = prefix + (accent ? ' <span class="title-accent">' + accent + '</span>' : '');
   $('view-overview').textContent = overview;
 
-  ['status','agents','teams','roles','skills','mcp','messaging','chat','history','schedule','webhooks','creds','audit'].forEach(t => {
+  ['status','agents','teams','workspace','roles','skills','mcp','messaging','chat','history','schedule','webhooks','creds','audit'].forEach(t => {
     const content = $('tab-' + t);
     if (content) content.classList.toggle('active', t === name);
 
@@ -1446,6 +1557,7 @@ function switchTab(name) {
   });
   if (name === 'agents')    loadAgents();
   if (name === 'teams')     loadTeams();
+  if (name === 'workspace') loadWorkspace();
   if (name === 'roles')     loadTeams();
   if (name === 'messaging') loadConnections();
   if (name === 'history')   loadHistory();
@@ -1484,6 +1596,10 @@ function connect() {
 
   es.addEventListener('event', e => {
     appendEvent(JSON.parse(e.data));
+  });
+
+  es.addEventListener('workspace:update', e => {
+    applyWorkspaceUpdate(JSON.parse(e.data));
   });
 
   es.onerror = async () => {
@@ -3830,6 +3946,278 @@ async function verifyAuditChain() {
   setTheme(localStorage.getItem('ai_desk_theme') || 'dark');
   checkLogin();
 })();
+
+// ═══════════════════════════════════════════════════════════════
+//  Workspace — Flow DAG
+// ═══════════════════════════════════════════════════════════════
+let dagOpen       = false;
+let dagSelectedTeam = null;
+
+function toggleDag() {
+  dagOpen = !dagOpen;
+  const body = $('ws-dag-body');
+  const btn  = $('ws-dag-toggle-btn');
+  if (body) body.style.display = dagOpen ? '' : 'none';
+  if (btn)  btn.textContent = dagOpen ? '[HIDE]' : '[SHOW]';
+  if (dagOpen) renderDag();
+}
+
+function renderDag() {
+  const teams = wsData.teams || [];
+  const tasks = wsData.tasks || [];
+
+  // Team selector buttons
+  const btnContainer = $('ws-dag-team-btns');
+  if (btnContainer) {
+    if (!teams.length) {
+      btnContainer.innerHTML = '';
+    } else {
+      btnContainer.innerHTML = teams.map(tr =>
+        '<button class="btn' + (dagSelectedTeam === tr.teamId ? ' active' : '') + '" '
+        + 'style="font-size:9px;padding:3px 9px" '
+        + 'onclick="selectDagTeam(\'' + esc(tr.teamId) + '\')">'
+        + esc(tr.teamName || tr.teamId) + '</button>'
+      ).join('');
+      if (!dagSelectedTeam && teams.length) dagSelectedTeam = teams[0].teamId;
+    }
+  }
+
+  const canvas = $('ws-dag-canvas');
+  if (!canvas) return;
+
+  const teamTasks = tasks.filter(t => t.teamId === dagSelectedTeam);
+  if (!teamTasks.length) {
+    canvas.innerHTML = '<div class="ws-empty">NO TASKS FOR THIS TEAM RUN YET</div>';
+    return;
+  }
+
+  canvas.innerHTML = buildDagSvg(teamTasks);
+}
+
+function selectDagTeam(teamId) {
+  dagSelectedTeam = teamId;
+  renderDag();
+}
+
+/**
+ * Topological layered layout:
+ *   - Layer 0: nodes with no in-dag depends
+ *   - Layer N: nodes whose all deps are in layer < N
+ * Then place nodes left-to-right by layer, top-to-bottom within layer.
+ */
+function buildDagSvg(tasks) {
+  const NODE_W = 130, NODE_H = 42, PAD_X = 60, PAD_Y = 36;
+
+  // Build adjacency
+  const ids = tasks.map(t => t.taskId);
+  const taskMap = {};
+  for (const t of tasks) taskMap[t.taskId] = t;
+
+  // Assign layers
+  const layers = {};
+  const getLayer = (id) => {
+    if (layers[id] != null) return layers[id];
+    const t = taskMap[id];
+    if (!t) return 0;
+    const deps = (t.depends || []).filter(d => ids.includes(d));
+    if (!deps.length) { layers[id] = 0; return 0; }
+    const maxDep = Math.max(...deps.map(d => getLayer(d)));
+    layers[id] = maxDep + 1;
+    return layers[id];
+  };
+  for (const id of ids) getLayer(id);
+
+  const maxLayer = Math.max(0, ...Object.values(layers));
+  const byLayer = {};
+  for (let l = 0; l <= maxLayer; l++) byLayer[l] = [];
+  for (const id of ids) byLayer[layers[id]].push(id);
+
+  // Node positions
+  const pos = {};
+  const maxInLayer = Math.max(1, ...Object.values(byLayer).map(a => a.length));
+  const svgH = maxInLayer * (NODE_H + PAD_Y) + PAD_Y;
+  const svgW = (maxLayer + 1) * (NODE_W + PAD_X) + PAD_X;
+
+  for (let l = 0; l <= maxLayer; l++) {
+    const nodesInLayer = byLayer[l];
+    const totalH = nodesInLayer.length * (NODE_H + PAD_Y) - PAD_Y;
+    const startY  = (svgH - totalH) / 2;
+    nodesInLayer.forEach((id, i) => {
+      pos[id] = {
+        x: PAD_X + l * (NODE_W + PAD_X),
+        y: startY + i * (NODE_H + PAD_Y),
+      };
+    });
+  }
+
+  // SVG elements
+  let edges = '';
+  let nodes = '';
+
+  // Arrows marker
+  const defs = '<defs>'
+    + '<marker id="arr-default" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" class="dag-arrowhead"/></marker>'
+    + '<marker id="arr-active"  markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" class="dag-arrowhead active"/></marker>'
+    + '<marker id="arr-done"    markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" class="dag-arrowhead done"/></marker>'
+    + '</defs>';
+
+  // Draw edges first (behind nodes)
+  for (const t of tasks) {
+    for (const dep of (t.depends || []).filter(d => ids.includes(d))) {
+      const from = pos[dep];
+      const to   = pos[t.taskId];
+      if (!from || !to) continue;
+      const x1 = from.x + NODE_W, y1 = from.y + NODE_H / 2;
+      const x2 = to.x,            y2 = to.y   + NODE_H / 2;
+      const depTask  = taskMap[dep];
+      const edgeCls  = depTask?.status === 'done' ? 'done' : depTask?.status === 'running' ? 'active' : '';
+      const markerId = edgeCls === 'done' ? 'arr-done' : edgeCls === 'active' ? 'arr-active' : 'arr-default';
+      const cx1 = x1 + (x2 - x1) * 0.5, cx2 = x2 - (x2 - x1) * 0.5;
+      edges += '<path class="dag-edge ' + edgeCls + '" d="M' + x1 + ',' + y1
+        + ' C' + cx1 + ',' + y1 + ' ' + cx2 + ',' + y2 + ' ' + (x2 - 6) + ',' + y2
+        + '" marker-end="url(#' + markerId + ')"/>';
+    }
+  }
+
+  // Draw nodes
+  for (const t of tasks) {
+    const p = pos[t.taskId];
+    if (!p) continue;
+    const st  = t.status;
+    const lbl = (t.label || t.taskId).slice(0, 18);
+    const phase = t.phase === 'decompose' ? '⬡' : t.phase === 'synthesize' ? '◈' : '';
+    const pulseCls = st === 'running' ? ' dag-pulse' : '';
+    nodes += '<g class="dag-node' + pulseCls + '" transform="translate(' + p.x + ',' + p.y + ')">'
+      + '<rect class="dag-node-rect ' + st + '" width="' + NODE_W + '" height="' + NODE_H + '"/>'
+      + (phase ? '<text x="10" y="' + (NODE_H / 2) + '" class="dag-node-text" text-anchor="start" style="font-size:11px">' + phase + '</text>' : '')
+      + '<text x="' + (NODE_W / 2 + (phase ? 6 : 0)) + '" y="' + (NODE_H / 2 - 6) + '" class="dag-node-text">' + esc(lbl) + '</text>'
+      + '<text x="' + (NODE_W / 2) + '" y="' + (NODE_H / 2 + 8) + '" class="dag-node-status ' + st + '">' + st.toUpperCase() + '</text>'
+      + '</g>';
+  }
+
+  return '<svg class="ws-dag-svg" width="' + svgW + '" height="' + svgH + '" xmlns="http://www.w3.org/2000/svg" style="background:var(--bg-deep,var(--bg))">'
+    + defs + edges + nodes + '</svg>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Workspace tab
+// ═══════════════════════════════════════════════════════════════
+let wsData = { tasks: [], agents: [], teams: [], updatedAt: 0 };
+let wsFilter = 'all';
+
+async function loadWorkspace() {
+  try {
+    const r = await apiFetch('/dashboard/api/workspace');
+    if (!r.ok) return;
+    wsData = await r.json();
+    renderWorkspace();
+  } catch (e) { /* ignore */ }
+}
+
+function applyWorkspaceUpdate(data) {
+  wsData = data;
+  // Only re-render if workspace tab is active
+  if ($('tab-workspace') && $('tab-workspace').classList.contains('active')) {
+    renderWorkspace();
+  }
+  // Update live indicator
+  const dot   = $('ws-live-dot');
+  const label = $('ws-live-label');
+  if (dot)   { dot.style.background = 'var(--accent)'; setTimeout(() => { dot.style.background = 'var(--green)'; }, 600); }
+  if (label) label.textContent = 'LIVE';
+}
+
+function setWsFilter(f) {
+  wsFilter = f;
+  ['all','running','done','failed'].forEach(n => {
+    const btn = $('wsf-' + n);
+    if (btn) btn.classList.toggle('active', n === f);
+  });
+  renderWorkspace();
+}
+
+async function clearWorkspace() {
+  try { await apiFetch('/dashboard/api/workspace/clear', { method: 'DELETE' }); }
+  catch { /* ignore */ }
+  wsData = { tasks: [], agents: [], teams: [], updatedAt: 0 };
+  renderWorkspace();
+}
+
+function renderWorkspace() {
+  renderWsAgents(wsData.agents || []);
+  renderWsTasks(wsData.tasks || [], wsData.teams || []);
+  if (dagOpen) renderDag();
+}
+
+function renderWsAgents(agents) {
+  const el = $('ws-agents');
+  if (!el) return;
+  if (!agents.length) { el.innerHTML = '<div class="ws-empty">NO AGENT DATA</div>'; return; }
+  el.innerHTML = '<div class="ws-agent-list">'
+    + agents.map(a => {
+        const statusLabel = a.status === 'tool_use' ? 'TOOL' : a.status.toUpperCase();
+        const detail = a.status === 'tool_use' && a.currentTool ? a.currentTool
+          : a.currentTaskId ? a.currentTaskId.replace(/^[^:]+:/, '') : '';
+        return '<div class="ws-agent-row">'
+          + '<div class="ws-agent-id">' + esc(a.agentId) + '</div>'
+          + '<span class="ws-agent-badge ' + esc(a.status) + '">' + statusLabel + '</span>'
+          + (detail ? '<div class="ws-agent-detail">' + esc(detail) + '</div>' : '')
+          + '</div>';
+      }).join('')
+    + '</div>';
+}
+
+function renderWsTasks(tasks, teams) {
+  const el = $('ws-tasks');
+  if (!el) return;
+  const filtered = wsFilter === 'all' ? tasks : tasks.filter(t => t.status === wsFilter);
+  if (!filtered.length) {
+    el.innerHTML = '<div class="ws-empty">'
+      + (wsFilter === 'all' ? 'NO TASKS YET — RUN A TEAM TO SEE WORK FLOW' : 'NO ' + wsFilter.toUpperCase() + ' TASKS')
+      + '</div>';
+    return;
+  }
+
+  // Group by team
+  const byTeam = {};
+  for (const t of filtered) {
+    const key = t.teamId || '__standalone__';
+    if (!byTeam[key]) byTeam[key] = [];
+    byTeam[key].push(t);
+  }
+
+  const teamMap = {};
+  for (const tr of (teams || [])) teamMap[tr.teamId] = tr;
+
+  let html = '<div class="ws-task-board">';
+  for (const [teamId, tTasks] of Object.entries(byTeam)) {
+    const tr = teamMap[teamId];
+    const teamLabel = tr ? esc(tr.teamName || teamId) : (teamId === '__standalone__' ? 'STANDALONE' : esc(teamId));
+    const statusDotColor = !tr ? 'var(--muted)' : tr.status === 'running' ? 'var(--accent)' : tr.status === 'complete' ? 'var(--green)' : 'var(--red)';
+    html += '<div class="ws-team-header">'
+      + '<span class="ws-team-status-dot" style="background:' + statusDotColor + '"></span>'
+      + teamLabel;
+    if (tr?.goal) html += ' <span style="font-family:var(--font-mono);font-size:9px;color:var(--muted);font-weight:normal;letter-spacing:0">— ' + esc(tr.goal.slice(0, 60)) + (tr.goal.length > 60 ? '…' : '') + '</span>';
+    html += '</div>';
+
+    for (const t of tTasks) {
+      const dur = t.durationMs != null ? (t.durationMs / 1000).toFixed(1) + 's' : '';
+      const phase = t.phase === 'decompose' ? '⬡ ' : t.phase === 'synthesize' ? '◈ ' : '';
+      html += '<div class="ws-task-card ' + esc(t.status) + '">'
+        + '<div class="ws-task-dot ' + esc(t.status) + '"></div>'
+        + '<div>'
+          + '<div class="ws-task-label">' + phase + esc(t.label || t.taskId) + '</div>'
+          + (t.lastStep ? '<div class="ws-task-step">' + esc(t.lastStep) + '</div>' : '')
+          + (t.error    ? '<div style="font-family:var(--font-mono);font-size:9px;color:var(--red);margin-top:2px">' + esc(t.error.slice(0,80)) + '</div>' : '')
+        + '</div>'
+        + '<div class="ws-task-agent">' + esc(t.agentId) + '</div>'
+        + '<div class="ws-task-meta">' + esc(t.status.toUpperCase()) + (dur ? ' · ' + dur : '') + '</div>'
+        + '</div>';
+    }
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
 </script>
 </body>
 </html>`;

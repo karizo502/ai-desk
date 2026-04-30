@@ -44,6 +44,17 @@ export class TeamCoordinator {
 
     eventBus.emit('team:start', { teamId, teamName: team.name, goal });
 
+    // ── Synthetic task: decompose ─────────────────────────────
+    eventBus.emit('task:created', {
+      taskId: `${teamId}:__decompose__`,
+      label: 'Decompose goal',
+      agentId: team.leadAgentId,
+      teamId,
+      depends: [],
+      phase: 'decompose',
+    });
+    eventBus.emit('task:started', { taskId: `${teamId}:__decompose__`, agentId: team.leadAgentId, teamId });
+
     // ── Phase 1: decompose goal into tasks ───────────────────
     const memberContext = team.members.map(m => {
       const role = this.roles.get(m.roleId);
@@ -73,6 +84,8 @@ export class TeamCoordinator {
 
     if (!decompositionResult.success) {
       const err = `Lead agent failed during decomposition: ${decompositionResult.error}`;
+      eventBus.emit('task:failed', { taskId: `${teamId}:__decompose__`, agentId: team.leadAgentId, teamId,
+        error: decompositionResult.error, durationMs: decompositionResult.durationMs });
       eventBus.emit('team:failed', { teamId, error: err });
       return {
         teamId,
@@ -95,6 +108,8 @@ export class TeamCoordinator {
       if (!Array.isArray(tasks) || tasks.length === 0) throw new Error('empty task array');
     } catch (err) {
       const errMsg = `Lead agent returned invalid task JSON: ${(err as Error).message}`;
+      eventBus.emit('task:failed', { taskId: `${teamId}:__decompose__`, agentId: team.leadAgentId, teamId,
+        error: errMsg });
       eventBus.emit('team:failed', { teamId, error: errMsg });
       return {
         teamId,
@@ -107,6 +122,22 @@ export class TeamCoordinator {
         failedCount: 0,
         totalDurationMs: Date.now() - start,
       };
+    }
+
+    // Decomposition succeeded
+    eventBus.emit('task:done', { taskId: `${teamId}:__decompose__`, agentId: team.leadAgentId, teamId,
+      durationMs: decompositionResult.durationMs });
+
+    // Announce the discovered tasks so WorkspaceTracker can pre-populate them
+    for (const task of tasks) {
+      eventBus.emit('task:created', {
+        taskId: task.id,
+        label: task.label ?? task.id,
+        agentId: task.agentId,
+        teamId,
+        depends: task.depends ?? [],
+        phase: 'work',
+      });
     }
 
     // Apply role system-prompt prefixes: inject into each task's prompt
@@ -125,9 +156,19 @@ export class TeamCoordinator {
       failFast: false,
       channelId: `team:${teamId}`,
       peerId: 'coordinator',
+      teamId,
     });
 
     // ── Phase 3: synthesise results ──────────────────────────
+    eventBus.emit('task:created', {
+      taskId: `${teamId}:__synthesize__`,
+      label: 'Synthesise results',
+      agentId: team.leadAgentId,
+      teamId,
+      depends: orchResult.tasks.map(t => t.id),
+      phase: 'synthesize',
+    });
+    eventBus.emit('task:started', { taskId: `${teamId}:__synthesize__`, agentId: team.leadAgentId, teamId });
     const resultLines = orchResult.tasks.map(t => {
       if (t.status === 'done') return `[${t.label ?? t.id}] DONE:\n${t.result}`;
       if (t.status === 'failed') return `[${t.label ?? t.id}] FAILED: ${t.error}`;
@@ -145,7 +186,24 @@ export class TeamCoordinator {
       agentId: team.leadAgentId,
       channelId: `team:${teamId}`,
       peerId: 'coordinator',
+      onProgress: (event) => {
+        eventBus.emit('task:step', {
+          taskId: `${teamId}:__synthesize__`,
+          agentId: team.leadAgentId,
+          teamId,
+          step: event.type,
+          detail: event.type === 'tool_use' ? (event as { toolName: string }).toolName : undefined,
+        });
+      },
     });
+
+    if (synthesisResult.success) {
+      eventBus.emit('task:done', { taskId: `${teamId}:__synthesize__`, agentId: team.leadAgentId, teamId,
+        durationMs: synthesisResult.durationMs });
+    } else {
+      eventBus.emit('task:failed', { taskId: `${teamId}:__synthesize__`, agentId: team.leadAgentId, teamId,
+        error: synthesisResult.error, durationMs: synthesisResult.durationMs });
+    }
 
     const synthesis = synthesisResult.success
       ? synthesisResult.content

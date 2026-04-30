@@ -22,6 +22,8 @@ export interface OrchestrateRequest {
   failFast?: boolean;
   channelId?: string;
   peerId?: string;
+  /** Team that spawned this orchestration — forwarded in task:* events */
+  teamId?: string;
 }
 
 export interface OrchestrateResult {
@@ -115,10 +117,13 @@ export class Orchestrator {
     running: Set<string>,
     req: OrchestrateRequest,
   ): Promise<void> {
-    const { id, agentId } = node.def;
+    const { id, agentId, label } = node.def;
+    const teamId = req.teamId;
     running.add(id);
     graph.markRunning(id);
+
     eventBus.emit('orchestrator:task-start', { id, agentId });
+    eventBus.emit('task:started', { taskId: id, agentId, teamId, label });
 
     // Run the task and wait — the caller awaits Promise.all over these
     try {
@@ -128,19 +133,27 @@ export class Orchestrator {
         agentId,
         channelId: req.channelId ?? 'orchestrator',
         peerId: req.peerId ?? 'orchestrator',
+        onProgress: (event) => {
+          eventBus.emit('task:step', { taskId: id, agentId, teamId, label, step: event.type,
+            detail: event.type === 'tool_use' ? (event as { toolName: string }).toolName : undefined });
+        },
       });
 
       if (result.success) {
         graph.markDone(id, result.content);
         eventBus.emit('orchestrator:task-done', { id, durationMs: result.durationMs });
+        eventBus.emit('task:done', { taskId: id, agentId, teamId, label, durationMs: result.durationMs });
       } else {
         graph.markFailed(id, result.error ?? 'agent returned failure');
         eventBus.emit('orchestrator:task-failed', { id, error: result.error });
+        eventBus.emit('task:failed', { taskId: id, agentId, teamId, label, error: result.error,
+          durationMs: result.durationMs });
       }
     } catch (err) {
       const error = (err as Error).message;
       graph.markFailed(id, error);
       eventBus.emit('orchestrator:task-failed', { id, error });
+      eventBus.emit('task:failed', { taskId: id, agentId, teamId, label, error });
     } finally {
       running.delete(id);
     }
