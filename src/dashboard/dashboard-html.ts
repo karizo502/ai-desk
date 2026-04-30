@@ -257,6 +257,21 @@ tr:hover td { background: rgba(200,144,72,0.06); }
 /* ── Chat Specific ──────────────────────────────────────── */
 #tab-chat { padding: 0; height: 100%; display: none; flex-direction: column; }
 #tab-chat.active { display: flex; }
+
+/* ── History Specific ──────────────────────────────────── */
+#tab-history { padding: 0; height: 100%; display: none; flex-direction: column; }
+#tab-history.active { display: flex; }
+.hist-layout { flex: 1; display: grid; grid-template-columns: 300px 1fr; min-height: 0; overflow: hidden; }
+.hist-left { display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border); }
+.hist-right { display: flex; flex-direction: column; overflow: hidden; }
+.hist-session-item { display: block; width: 100%; box-sizing: border-box; padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; background: transparent; border-left: 3px solid transparent; text-align: left; transition: background 0.1s; }
+.hist-session-item:hover { background: var(--bg-card); }
+.hist-session-item.selected { background: var(--accent-soft); border-left-color: var(--accent); }
+.hist-msg-row { display: grid; grid-template-columns: 52px 1fr; gap: 14px; align-items: flex-start; }
+.hist-avatar { width: 44px; height: 44px; display: grid; place-items: center; font-family: var(--font-tactical); font-size: 20px; line-height: 1; flex-shrink: 0; }
+.hist-msg-body { border: 1px solid var(--border); padding: 12px 16px; font-size: 13.5px; line-height: 1.6; color: var(--text); }
+.hist-tool-bar { margin: 4px 0 4px 66px; padding: 6px 12px; background: var(--bg-input); border: 1px solid var(--border); font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+.hist-code-block { margin-top: 8px; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); font-family: var(--font-mono); font-size: 11px; color: var(--accent); overflow-x: auto; white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; }
 #chat-messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
 .msg-bubble { border-radius: 16px !important; padding: 12px 18px !important; font-size: 14px !important; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 #chat-input-row { padding: 20px 24px; background: var(--bg-card); border-top: 1px solid var(--border); }
@@ -384,6 +399,22 @@ tr:hover td { background: rgba(200,144,72,0.06); }
     <button class="nav-tab" id="ntab-chat" onclick="switchTab('chat')">
       <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
       Chat
+    </button>
+    <button class="nav-tab" id="ntab-history" onclick="switchTab('history')">
+      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/><path d="M2.5 8.5A9 9 0 0112 3"/><path d="M2 5l1 5h5"/></svg>
+      History
+    </button>
+    <button class="nav-tab" id="ntab-schedule" onclick="switchTab('schedule')">
+      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      Schedule
+    </button>
+    <button class="nav-tab" id="ntab-webhooks" onclick="switchTab('webhooks')">
+      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 018-8"/><path d="M20 12a8 8 0 01-8 8"/><path d="M12 4v4M12 16v4M4 12H2M22 12h-2"/><circle cx="12" cy="12" r="3"/></svg>
+      Webhooks
+    </button>
+    <button class="nav-tab" id="ntab-audit" onclick="switchTab('audit')">
+      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+      Audit
     </button>
     <button class="nav-tab" id="ntab-creds" onclick="switchTab('creds')">
       <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="14" r="4"/><path d="M11 11l9-9M16 6l3 3M14 8l3 3"/></svg>
@@ -667,13 +698,260 @@ tr:hover td { background: rgba(200,144,72,0.06); }
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px">
       <h3 style="margin:0;font-family:var(--font-tactical);font-size:20px;letter-spacing:0.1em;text-transform:uppercase">MESSAGING ADAPTERS</h3>
     </div>
-    <div class="card">
+    <div class="card" style="margin-bottom:16px">
       <h3><svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4V5z"/></svg> Platform Status</h3>
       <div class="card-body" style="padding-top:8px">
       <table id="msg-tbl" style="width:100%">
         <thead><tr><th>Platform</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody></tbody>
       </table>
+      </div>
+    </div>
+
+    <!-- Per-Agent Connections -->
+    <div class="card" style="margin-bottom:16px">
+      <h3>
+        <svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 7v4M7 17l3-4M17 17l-3-4"/></svg>
+        Per-Agent Connections
+      </h3>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+          <div>
+            <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">LABEL</label>
+            <input id="conn-label" class="login-input" style="margin-bottom:0" placeholder="e.g. Sales bot">
+          </div>
+          <div>
+            <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">PLATFORM</label>
+            <select id="conn-platform" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:10px;font-size:13px">
+              <option value="telegram">Telegram</option>
+              <option value="discord">Discord</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">AGENT</label>
+            <select id="conn-agent" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:10px;font-size:13px">
+              <option value="">— select agent —</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">BOT TOKEN</label>
+          <input id="conn-token" class="login-input" style="margin-bottom:0;font-family:var(--font-mono);font-size:12px" type="password" placeholder="Paste bot token here (stored encrypted)">
+        </div>
+        <button class="btn btn-primary" onclick="createConnection()">+ Add Connection</button>
+        <span id="conn-msg" style="font-family:var(--font-mono);font-size:11px;margin-left:10px"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>
+        <svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        Active Connections
+      </h3>
+      <div class="card-body" style="padding-top:8px">
+        <table id="conn-tbl" style="width:100%">
+          <thead><tr><th>Label</th><th>Platform</th><th>Agent</th><th>Bot / Status</th><th>Running</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="content-area" id="tab-history">
+    <div class="hist-layout">
+
+      <!-- ── LEFT: session list ────────────────────────────── -->
+      <div class="hist-left">
+        <div style="padding:14px 14px 10px;border-bottom:1px solid var(--border);flex-shrink:0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+            <input id="hist-search" style="flex:1;background:transparent;border:none;outline:none;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--text)" placeholder="Search sessions…" oninput="histFilter()">
+          </div>
+          <div style="display:flex;gap:6px">
+            <select id="hist-agent" style="flex:1;background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:8px;font-size:11px;font-family:var(--font-mono)" onchange="histFilter()">
+              <option value="">All agents</option>
+            </select>
+            <select id="hist-state" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:8px;font-size:11px;font-family:var(--font-mono)" onchange="histFilter()">
+              <option value="">All states</option>
+              <option value="active">Active</option>
+              <option value="idle">Idle</option>
+              <option value="closed">Closed</option>
+            </select>
+            <button class="btn" style="font-size:10px;padding:5px 10px;flex-shrink:0" onclick="loadHistory()">↻</button>
+          </div>
+        </div>
+        <div style="padding:6px 14px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between">
+          <span id="hist-count" style="font-family:var(--font-mono);font-size:9px;letter-spacing:.2em;color:var(--muted)">SESSIONS: 0</span>
+          <span id="hist-unread" style="font-family:var(--font-mono);font-size:9px;letter-spacing:.2em;color:var(--accent)"></span>
+        </div>
+        <div id="hist-list" style="flex:1;overflow-y:auto"></div>
+      </div>
+
+      <!-- ── RIGHT: transcript view ────────────────────────── -->
+      <div class="hist-right">
+        <!-- Header (hidden until a session is selected) -->
+        <div id="hist-header" style="padding:18px 26px 14px;border-bottom:1px solid var(--border);flex-shrink:0;display:none">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+            <div style="min-width:0">
+              <div id="hist-hdr-meta" style="font-family:var(--font-mono);font-size:9px;letter-spacing:.24em;color:var(--muted);margin-bottom:6px"></div>
+              <h3 id="hist-hdr-title" style="font-family:var(--font-tactical);font-size:36px;margin:0;line-height:.9;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></h3>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+              <span id="hist-hdr-state"></span>
+              <button id="hist-del-btn" class="btn" style="font-size:11px;color:var(--red)" onclick="deleteHistSession()">Delete</button>
+            </div>
+          </div>
+          <div id="hist-hdr-stats" style="margin-top:10px;display:flex;gap:18px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:var(--muted)"></div>
+        </div>
+
+        <!-- Empty state -->
+        <div id="hist-empty" style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--dim)">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+          <span style="font-family:var(--font-mono);font-size:10px;letter-spacing:.2em">SELECT A SESSION</span>
+        </div>
+
+        <!-- Transcript scroll area -->
+        <div id="hist-transcript" style="flex:1;overflow-y:auto;padding:26px 28px 32px;display:none;flex-direction:column;gap:22px"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="content-area" id="tab-schedule">
+    <!-- Create job -->
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="margin-bottom:16px">
+        <svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        New Scheduled Job
+      </h3>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div>
+            <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">NAME</label>
+            <input id="cron-name" class="login-input" style="margin-bottom:0" placeholder="e.g. Daily digest">
+          </div>
+          <div>
+            <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">AGENT</label>
+            <select id="cron-agent" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:10px;font-size:13px">
+              <option value="">— select agent —</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">SCHEDULE (cron)</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="cron-schedule" class="login-input" style="margin-bottom:0;font-family:var(--font-mono);flex:1" placeholder="0 9 * * *" oninput="updateCronPreview()">
+            <select id="cron-preset" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:10px;font-size:12px" onchange="applyCronPreset()">
+              <option value="">Presets…</option>
+              <option value="* * * * *">Every minute</option>
+              <option value="0 * * * *">Every hour</option>
+              <option value="0 9 * * *">Daily 9:00 UTC</option>
+              <option value="0 0 * * *">Daily midnight UTC</option>
+              <option value="0 9 * * 1">Mondays 9:00 UTC</option>
+              <option value="0 9 * * 1-5">Weekdays 9:00 UTC</option>
+              <option value="0 9 1 * *">Monthly 1st 9:00 UTC</option>
+            </select>
+          </div>
+          <div id="cron-preview" style="font-size:11px;color:var(--muted);margin-top:5px;font-family:var(--font-mono)">Next run: —</div>
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">PROMPT</label>
+          <textarea id="cron-prompt" class="login-input" style="margin-bottom:0;height:90px;resize:vertical;font-family:var(--font-mono);font-size:12px" placeholder="Summarise today's events and send a brief report."></textarea>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="btn primary" onclick="createCronJob()">Create Job</button>
+          <span id="cron-msg" style="font-size:12px"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Job list -->
+    <div class="card">
+      <div class="card-header" style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:13px;font-weight:600">Scheduled Jobs</span>
+        <button class="btn" style="font-size:11px;margin-left:auto" onclick="loadSchedule()">↻ Refresh</button>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div id="cron-list"><div class="dossier-empty">Loading…</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content-area" id="tab-webhooks">
+    <!-- Create webhook -->
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="margin-bottom:16px">
+        <svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M4 12a8 8 0 018-8M20 12a8 8 0 01-8 8"/></svg>
+        New Webhook
+      </h3>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div>
+            <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">NAME</label>
+            <input id="wh-name" class="login-input" style="margin-bottom:0" placeholder="e.g. GitHub push">
+          </div>
+          <div>
+            <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">AGENT</label>
+            <select id="wh-agent" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:10px;font-size:13px">
+              <option value="">— select agent —</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">PROMPT TEMPLATE <span style="font-weight:400">(use <code style="background:var(--bg-card);padding:1px 4px;border-radius:4px">{{body}}</code> for request body)</span></label>
+          <textarea id="wh-template" class="login-input" style="margin-bottom:0;height:90px;resize:vertical;font-family:var(--font-mono);font-size:12px" placeholder="Process this event and reply with a summary: {{body}}"></textarea>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="btn primary" onclick="createWebhook()">Create Webhook</button>
+          <span id="wh-msg" style="font-size:12px"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Webhook list -->
+    <div class="card">
+      <div class="card-header" style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:13px;font-weight:600">Registered Webhooks</span>
+        <button class="btn" style="font-size:11px;margin-left:auto" onclick="loadWebhooks()">↻ Refresh</button>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div id="wh-list"><div class="dossier-empty">Loading…</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content-area" id="tab-audit">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <input id="audit-search" class="login-input" style="width:200px;margin-bottom:0;padding:6px 12px;font-size:12px" placeholder="Search actor / event…" oninput="loadAuditLog()">
+        <select id="audit-event-filter" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:8px;font-size:12px" onchange="loadAuditLog()">
+          <option value="">All events</option>
+          <option value="connection:auth">Auth</option>
+          <option value="connection:auth:failed">Auth failed</option>
+          <option value="tool:request">Tool request</option>
+          <option value="tool:denied">Tool denied</option>
+          <option value="security:alert">Security alert</option>
+          <option value="security:threat">Security threat</option>
+          <option value="agent:start">Agent start</option>
+          <option value="agent:end">Agent end</option>
+          <option value="memory:stored">Memory stored</option>
+        </select>
+        <select id="audit-limit" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:8px;font-size:12px" onchange="loadAuditLog()">
+          <option value="50">50 entries</option>
+          <option value="100" selected>100 entries</option>
+          <option value="250">250 entries</option>
+          <option value="500">500 entries</option>
+        </select>
+        <button class="btn" style="font-size:11px" onclick="loadAuditLog()">↻ Refresh</button>
+        <button class="btn" id="audit-verify-btn" style="font-size:11px;margin-left:auto" onclick="verifyAuditChain()">Verify Chain</button>
+        <span id="audit-integrity-badge" style="font-family:var(--font-mono);font-size:10px;display:none"></span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body" style="padding:0;overflow:hidden">
+        <div id="audit-log-table" style="overflow-x:auto">
+          <div class="dossier-empty">Loading…</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1121,13 +1399,17 @@ function switchTab(name) {
     mcp:       ['MCP',    'SERVERS',     'OVERVIEW / №06'],
     messaging: ['MSG',    'ADAPTERS',    'OVERVIEW / №07'],
     chat:      ['LIVE',   'CHAT',        'OVERVIEW / №08'],
-    creds:     ['API',    'CREDENTIALS', 'OVERVIEW / №09'],
+    history:   ['SESSION','HISTORY',     'OVERVIEW / №09'],
+    schedule:  ['CRON',   'SCHEDULE',    'OVERVIEW / №10'],
+    webhooks:  ['HTTP',   'WEBHOOKS',    'OVERVIEW / №11'],
+    creds:     ['API',    'CREDENTIALS', 'OVERVIEW / №12'],
+    audit:     ['AUDIT',  'LOG',         'OVERVIEW / №13'],
   };
   const [prefix, accent, overview] = titles[name] || [name.toUpperCase(), '', ''];
   $('view-title').innerHTML = prefix + (accent ? ' <span class="title-accent">' + accent + '</span>' : '');
   $('view-overview').textContent = overview;
 
-  ['status','agents','teams','roles','skills','mcp','messaging','chat','creds'].forEach(t => {
+  ['status','agents','teams','roles','skills','mcp','messaging','chat','history','schedule','webhooks','creds','audit'].forEach(t => {
     const content = $('tab-' + t);
     if (content) content.classList.toggle('active', t === name);
 
@@ -1138,9 +1420,14 @@ function switchTab(name) {
       if (arrow) /** @type {HTMLElement} */(arrow).style.display = t === name ? '' : 'none';
     }
   });
-  if (name === 'agents') loadAgents();
-  if (name === 'teams')  loadTeams();
-  if (name === 'roles')  loadTeams();
+  if (name === 'agents')    loadAgents();
+  if (name === 'teams')     loadTeams();
+  if (name === 'roles')     loadTeams();
+  if (name === 'messaging') loadConnections();
+  if (name === 'history')   loadHistory();
+  if (name === 'schedule')  loadSchedule();
+  if (name === 'webhooks')  loadWebhooks();
+  if (name === 'audit')     loadAuditLog();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2664,6 +2951,799 @@ function showTeamMsg(id, text, cls) {
   if (!el) return;
   el.textContent = text;
   el.style.color = cls === 'ok' ? 'var(--green)' : cls === 'err' ? 'var(--red)' : 'var(--muted)';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Session History
+// ═══════════════════════════════════════════════════════════════
+let histSessions = [];
+let histSelected = null;
+
+function timeAgo(ts) {
+  if (!ts) return '—';
+  const d = Date.now() - ts;
+  if (d < 60_000)        return '<1m';
+  if (d < 3_600_000)     return Math.floor(d / 60_000) + 'm';
+  if (d < 86_400_000)    return Math.floor(d / 3_600_000) + 'h';
+  if (d < 7 * 86_400_000) return Math.floor(d / 86_400_000) + 'd';
+  return new Date(ts).toLocaleDateString();
+}
+
+function channelSource(channelId) {
+  if (!channelId) return { icon: '🔌', label: 'unknown' };
+  if (channelId.startsWith('conn:'))     return { icon: '🌐', label: 'WebSocket' };
+  if (channelId.startsWith('webhook:'))  return { icon: '🔗', label: 'Webhook' };
+  if (channelId.startsWith('cron:'))     return { icon: '⏰', label: 'Cron' };
+  if (channelId.startsWith('telegram:')) return { icon: '✈️', label: 'Telegram' };
+  if (channelId.startsWith('discord:'))  return { icon: '🎮', label: 'Discord' };
+  return { icon: '📡', label: channelId.split(':')[0] };
+}
+
+async function loadHistory() {
+  const container = $('hist-list');
+  if (!container) return;
+  container.innerHTML = '<div class="dossier-empty" style="padding:20px">Loading…</div>';
+  try {
+    const r = await apiFetch('/dashboard/api/sessions?limit=200');
+    const d = await r.json();
+    histSessions = d.sessions || [];
+
+    // Populate agent filter
+    const agSel = $('hist-agent');
+    if (agSel) {
+      const agents = [...new Set(histSessions.map(s => s.agentId))].sort();
+      const cur = agSel.value;
+      agSel.innerHTML = '<option value="">All agents</option>'
+        + agents.map(a => '<option value="' + esc(a) + '"' + (a === cur ? ' selected' : '') + '>' + esc(a) + '</option>').join('');
+    }
+
+    histFilter();
+  } catch (e) {
+    container.innerHTML = '<div class="dossier-empty" style="color:var(--red)">' + esc(String(e)) + '</div>';
+  }
+}
+
+function histFilter() {
+  const search  = ($('hist-search')?.value || '').toLowerCase().trim();
+  const agent   = $('hist-agent')?.value   || '';
+  const state   = $('hist-state')?.value   || '';
+
+  let list = histSessions;
+  if (agent)  list = list.filter(s => s.agentId === agent);
+  if (state)  list = list.filter(s => s.state === state);
+  if (search) list = list.filter(s =>
+    s.id.includes(search) ||
+    s.agentId.toLowerCase().includes(search) ||
+    s.channelId.toLowerCase().includes(search) ||
+    s.peerId.toLowerCase().includes(search),
+  );
+
+  const countEl = $('hist-count');
+  if (countEl) countEl.textContent = 'SESSIONS: ' + list.length;
+  const activeEl = $('hist-unread');
+  if (activeEl) {
+    const n = list.filter(s => s.state === 'active').length;
+    activeEl.textContent = n > 0 ? n + ' ACTIVE' : '';
+  }
+
+  const container = $('hist-list');
+  if (!container) return;
+  if (!list.length) {
+    container.innerHTML = '<div class="dossier-empty" style="padding:20px">No sessions found</div>';
+    return;
+  }
+
+  container.innerHTML = list.map(s => {
+    const src = channelSource(s.channelId);
+    const stateColor = s.state === 'active' ? 'var(--green)' : s.state === 'idle' ? 'var(--yellow)' : 'var(--dim)';
+    const isSelected = histSelected?.id === s.id;
+    const shortId = s.id.slice(-8).toUpperCase();
+    return '<button class="hist-session-item' + (isSelected ? ' selected' : '') + '" onclick="openSession(' + JSON.stringify(s.id) + ')">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">'
+      + '<div style="display:flex;align-items:center;gap:6px">'
+      + '<span style="font-family:var(--font-mono);font-size:9px;letter-spacing:.18em;color:var(--muted)">' + esc(src.icon) + ' S-' + esc(shortId) + '</span>'
+      + '</div>'
+      + '<span style="font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;color:var(--muted)">' + timeAgo(s.lastActiveAt) + '</span>'
+      + '</div>'
+      + '<div style="font-family:var(--font-tactical);font-size:22px;line-height:1;letter-spacing:.02em;color:var(--text);margin-bottom:5px">'
+      + esc(s.agentId.toUpperCase())
+      + '</div>'
+      + '<div style="display:flex;align-items:center;justify-content:space-between">'
+      + '<span style="font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:var(--accent)">' + esc(src.label) + '</span>'
+      + '<span style="width:7px;height:7px;border-radius:50%;background:' + stateColor + ';display:inline-block"></span>'
+      + '</div>'
+      + '</button>';
+  }).join('');
+}
+
+async function openSession(id) {
+  histSelected = histSessions.find(s => s.id === id) || { id };
+  histFilter(); // re-render list to highlight selection
+
+  const headerEl    = $('hist-header');
+  const emptyEl     = $('hist-empty');
+  const transcriptEl = $('hist-transcript');
+
+  if (emptyEl)      emptyEl.style.display = 'none';
+  if (transcriptEl) { transcriptEl.style.display = 'flex'; transcriptEl.innerHTML = '<div class="dossier-empty">Loading…</div>'; }
+
+  try {
+    const r = await apiFetch('/dashboard/api/sessions/' + id);
+    const d = await r.json();
+    if (!d.session) throw new Error(d.error || 'Not found');
+    const session = d.session;
+
+    // Populate header
+    if (headerEl) {
+      headerEl.style.display = '';
+      const src = channelSource(session.channelId);
+      const stateColor = session.state === 'active' ? 'var(--green)' : session.state === 'idle' ? 'var(--yellow)' : 'var(--dim)';
+      $('hist-hdr-meta').textContent =
+        'SESSION ' + session.id.slice(-12).toUpperCase()
+        + '  ·  ' + src.icon + ' ' + src.label.toUpperCase()
+        + '  ·  PEER ' + session.peerId.slice(0, 20).toUpperCase();
+      $('hist-hdr-title').textContent = session.agentId.toUpperCase();
+      $('hist-hdr-state').innerHTML = '<span style="font-family:var(--font-mono);font-size:10px;letter-spacing:.18em;padding:3px 8px;border:1px solid ' + stateColor + ';color:' + stateColor + '">' + session.state.toUpperCase() + '</span>';
+      const msgs = Array.isArray(session.transcript) ? session.transcript : [];
+      const userTurns  = msgs.filter(m => m.role === 'user'  && !isToolResultMsg(m)).length;
+      const agentTurns = msgs.filter(m => m.role === 'assistant').length;
+      $('hist-hdr-stats').innerHTML =
+        '<span>CREATED <span style="color:var(--text)">' + new Date(session.createdAt).toLocaleString() + '</span></span>'
+        + '<span>LAST <span style="color:var(--text)">' + new Date(session.lastActiveAt).toLocaleString() + '</span></span>'
+        + '<span>MESSAGES <span style="color:var(--accent)">' + (userTurns + agentTurns) + '</span></span>';
+    }
+
+    // Render transcript
+    if (transcriptEl) {
+      const html = renderTranscript(session);
+      transcriptEl.innerHTML = html;
+      transcriptEl.scrollTop = transcriptEl.scrollHeight;
+    }
+  } catch (e) {
+    if (transcriptEl) transcriptEl.innerHTML = '<div class="dossier-empty" style="color:var(--red)">' + esc(String(e)) + '</div>';
+  }
+}
+
+function isToolResultMsg(msg) {
+  return Array.isArray(msg.content)
+    && msg.content.length > 0
+    && msg.content.every(c => c && c.type === 'tool_result');
+}
+
+function renderTranscript(session) {
+  const msgs = Array.isArray(session.transcript) ? session.transcript : [];
+  if (!msgs.length) return '<div class="dossier-empty">No messages recorded</div>';
+
+  const agentInitial = (session.agentId || 'A').slice(0, 1).toUpperCase();
+  let html = '';
+  let msgNum = 0;
+
+  for (const msg of msgs) {
+    const isUser  = msg.role === 'user';
+    const content = msg.content;
+
+    // Tool-result messages: render as subtle inline bar, not a full bubble
+    if (isUser && isToolResultMsg({ content })) {
+      html += renderToolResultRow(content, session);
+      continue;
+    }
+
+    msgNum++;
+    const numStr      = String(msgNum).padStart(2, '0');
+    const isAssistant = !isUser;
+    const avatarBg    = isUser ? 'var(--text)' : 'var(--accent)';
+    const avatarFg    = 'var(--bg)';
+    const avatarChar  = isUser ? 'U' : agentInitial;
+    const borderColor = isUser ? 'var(--border)' : 'var(--accent)';
+    const bodyBg      = isAssistant ? 'rgba(200,144,72,0.04)' : 'transparent';
+    const senderName  = isUser ? 'YOU' : session.agentId.toUpperCase();
+
+    const bodyHtml = renderMsgContent(content);
+
+    html += '<div class="hist-msg-row">'
+      + '<div class="hist-avatar" style="background:' + avatarBg + ';color:' + avatarFg + '">' + esc(avatarChar) + '</div>'
+      + '<div>'
+      + '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px">'
+      + '<span style="font-family:var(--font-tactical);font-size:18px;letter-spacing:.06em;color:var(--text)">' + esc(senderName) + '</span>'
+      + '<span style="font-family:var(--font-mono);font-size:10px;letter-spacing:.18em;color:var(--muted)">№' + numStr + '</span>'
+      + '</div>'
+      + '<div class="hist-msg-body" style="border-left:3px solid ' + borderColor + ';background:' + bodyBg + '">'
+      + bodyHtml
+      + '</div>'
+      + '</div>'
+      + '</div>';
+  }
+
+  return html || '<div class="dossier-empty">Empty session</div>';
+}
+
+function renderMsgContent(content) {
+  if (typeof content === 'string') {
+    return '<div style="white-space:pre-wrap">' + esc(content) + '</div>';
+  }
+  if (!Array.isArray(content)) {
+    return '<div style="color:var(--muted);font-size:11px;font-style:italic">[unparseable content]</div>';
+  }
+  let html = '';
+  for (const blk of content) {
+    if (!blk) continue;
+    if (blk.type === 'text') {
+      html += '<div style="white-space:pre-wrap">' + esc(blk.text || '') + '</div>';
+    } else if (blk.type === 'tool_use') {
+      const inputStr = JSON.stringify(blk.input ?? {}, null, 2);
+      html += '<div class="hist-code-block" style="margin-top:8px">'
+        + '<div style="color:var(--accent);font-weight:600;margin-bottom:4px;font-size:10px;letter-spacing:.14em">⚙ TOOL: ' + esc(blk.name || '') + '</div>'
+        + '<pre style="margin:0;color:var(--muted);font-size:10px;overflow-x:auto;white-space:pre-wrap;word-break:break-all">' + esc(inputStr) + '</pre>'
+        + '</div>';
+    } else if (blk.type === 'tool_result') {
+      const rc = typeof blk.content === 'string' ? blk.content : JSON.stringify(blk.content);
+      const isErr = Boolean(blk.is_error);
+      html += '<div style="margin-top:4px;padding:5px 10px;background:var(--bg-input);border:1px solid var(--border);border-left:2px solid ' + (isErr ? 'var(--red)' : 'var(--green)') + ';font-family:var(--font-mono);font-size:10px;color:' + (isErr ? 'var(--red)' : 'var(--green)') + '">'
+        + (isErr ? '✗' : '✓') + ' ' + esc(rc.slice(0, 300)) + (rc.length > 300 ? '…' : '')
+        + '</div>';
+    } else {
+      html += '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">[' + esc(blk.type || 'unknown') + ']</div>';
+    }
+  }
+  return html || '<div style="color:var(--dim);font-style:italic;font-size:12px">(empty)</div>';
+}
+
+function renderToolResultRow(content) {
+  const results = Array.isArray(content) ? content : [];
+  return '<div class="hist-tool-bar">'
+    + results.map(r => {
+      const text = typeof r.content === 'string' ? r.content : JSON.stringify(r.content);
+      const isErr = Boolean(r.is_error);
+      return '<span style="color:' + (isErr ? 'var(--red)' : 'var(--green)') + ';margin-right:6px">' + (isErr ? '✗' : '✓') + '</span>'
+        + '<span style="color:var(--muted)">' + esc(text.slice(0, 180)) + (text.length > 180 ? '…' : '') + '</span>';
+    }).join('<br>')
+    + '</div>';
+}
+
+async function deleteHistSession() {
+  if (!histSelected) return;
+  if (!confirm('Permanently delete session ' + histSelected.id.slice(-8).toUpperCase() + '?')) return;
+  try {
+    const r = await apiFetch('/dashboard/api/sessions/' + histSelected.id, { method: 'DELETE' });
+    const d = await r.json();
+    if (d.ok) {
+      histSelected = null;
+      $('hist-header').style.display = 'none';
+      $('hist-transcript').style.display = 'none';
+      $('hist-empty').style.display = '';
+      await loadHistory();
+    } else {
+      alert(d.error || 'Delete failed');
+    }
+  } catch (e) { alert(String(e)); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Scheduled Tasks (Cron)
+// ═══════════════════════════════════════════════════════════════
+
+// Describe a cron expression in plain English (client-side, no server needed)
+function describeSchedule(expr) {
+  if (!expr) return expr;
+  const p = expr.trim().split(/\s+/);
+  if (p.length !== 5) return expr;
+  const [mn, hr, dom, , dow] = p;
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const domAll = dom === '*', dowAll = dow === '*';
+
+  if (expr === '* * * * *') return 'Every minute';
+  if (mn === '0' && hr === '*' && domAll && dowAll) return 'Every hour';
+  if (mn.match(/^\*\/\d+$/) && hr === '*' && domAll && dowAll) return 'Every ' + mn.slice(2) + ' min';
+  if (hr.match(/^\*\/\d+$/) && mn === '0' && domAll && dowAll) return 'Every ' + hr.slice(2) + ' hours';
+
+  const hrStr = hr.match(/^\d+$/) ? hr.padStart(2,'0') + ':' + mn.padStart(2,'0') + ' UTC' : null;
+
+  if (hrStr && domAll && dowAll) return 'Daily at ' + hrStr;
+  if (hrStr && domAll && dow.match(/^\d+$/)) {
+    const d = parseInt(dow,10);
+    return (days[d] || 'Day ' + d) + 's at ' + hrStr;
+  }
+  if (hrStr && domAll && dow.match(/^\d+-\d+$/)) {
+    const [lo,hi] = dow.split('-').map(Number);
+    if (lo === 1 && hi === 5) return 'Weekdays at ' + hrStr;
+    return days.slice(lo, hi+1).join('–') + ' at ' + hrStr;
+  }
+  if (hrStr && dom.match(/^\d+$/) && dowAll) return 'Monthly on ' + dom + ' at ' + hrStr;
+  return expr;
+}
+
+// Compute "next run" preview from cron expression (approximation using server)
+let cronPreviewDebounce = null;
+function updateCronPreview() {
+  const expr = $('cron-schedule')?.value?.trim() || '';
+  const el = $('cron-preview');
+  if (!el) return;
+  if (!expr) { el.textContent = 'Next run: —'; return; }
+  el.textContent = describeSchedule(expr);
+}
+
+function applyCronPreset() {
+  const val = $('cron-preset')?.value;
+  if (!val) return;
+  const inp = $('cron-schedule');
+  if (inp) { inp.value = val; updateCronPreview(); }
+  $('cron-preset').value = '';
+}
+
+async function loadSchedule() {
+  const container = $('cron-list');
+  if (!container) return;
+
+  // Populate agent selector
+  const agSel = $('cron-agent');
+  if (agSel && snapshotAgents.length) {
+    const cur = agSel.value;
+    agSel.innerHTML = '<option value="">— select agent —</option>'
+      + snapshotAgents.map(a => '<option value="' + esc(a.id) + '"' + (a.id === cur ? ' selected' : '') + '>' + esc(a.id) + '</option>').join('');
+  }
+
+  try {
+    const r = await apiFetch('/dashboard/api/cron');
+    const d = await r.json();
+    const jobs = d.jobs || [];
+
+    if (!jobs.length) {
+      container.innerHTML = '<div class="dossier-empty">No scheduled jobs yet</div>';
+      return;
+    }
+
+    container.innerHTML = jobs.map(job => {
+      const nextTs  = job.nextRunAt  ? new Date(job.nextRunAt).toLocaleString()  : '—';
+      const lastTs  = job.lastRunAt  ? new Date(job.lastRunAt).toLocaleString()  : 'Never';
+      const statusColor = job.lastStatus === 'ok' ? 'green' : job.lastStatus === 'error' ? 'red' : '';
+      const statusBadge = job.lastStatus ? badge(job.lastStatus, statusColor) : '';
+      const enabledLabel = job.enabled ? 'Enabled' : 'Disabled';
+      const enabledColor = job.enabled ? 'green' : 'red';
+      return '<div style="padding:14px 16px;border-bottom:1px solid var(--border)">'
+        + '<div style="display:flex;align-items:flex-start;gap:10px">'
+        + '<div style="flex:1;min-width:0">'
+        + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">'
+        + '<span style="font-weight:600;font-size:13px">' + esc(job.name) + '</span>'
+        + badge(job.agentId, 'purple')
+        + badge(enabledLabel, enabledColor)
+        + '</div>'
+        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
+        + '<code style="font-family:var(--font-mono);font-size:12px;background:var(--bg-card);padding:2px 8px;border-radius:6px;color:var(--accent)">' + esc(job.schedule) + '</code>'
+        + '<span style="font-size:12px;color:var(--muted)">' + esc(describeSchedule(job.schedule)) + '</span>'
+        + '</div>'
+        + '<div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px;margin-bottom:4px">'
+        + 'Prompt: ' + esc(job.prompt.length > 80 ? job.prompt.slice(0,80) + '…' : job.prompt)
+        + '</div>'
+        + '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--dim)">'
+        + '<span>Next: <span style="color:var(--text)">' + esc(nextTs) + '</span></span>'
+        + '<span>Last: ' + statusBadge + ' <span style="color:var(--text)">' + esc(lastTs) + '</span></span>'
+        + '<span>Runs: ' + job.runCount + '</span>'
+        + '</div>'
+        // Last result preview
+        + (job.lastResult ? '<div style="margin-top:6px;font-size:11px;color:var(--muted);background:var(--bg-card);padding:5px 8px;border-radius:6px;max-height:50px;overflow:hidden">' + esc(job.lastResult.slice(0,200)) + '</div>' : '')
+        + '</div>'
+        // Action buttons column
+        + '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0">'
+        + '<button class="btn primary" style="font-size:11px" onclick="runCronNow(' + JSON.stringify(job.id) + ')">▶ Run Now</button>'
+        + '<button class="btn" style="font-size:11px" onclick="toggleCronEnabled(' + JSON.stringify(job.id) + ',' + !job.enabled + ')">'
+        + (job.enabled ? 'Disable' : 'Enable') + '</button>'
+        + '<button class="btn" style="font-size:11px;color:var(--red)" onclick="deleteCronJob(' + JSON.stringify(job.id) + ')">Delete</button>'
+        + '</div>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+  } catch (e) {
+    container.innerHTML = '<div class="dossier-empty" style="color:var(--red)">' + esc(String(e)) + '</div>';
+  }
+}
+
+async function createCronJob() {
+  const name     = ($('cron-name')?.value     || '').trim();
+  const agentId  = $('cron-agent')?.value     || '';
+  const schedule = ($('cron-schedule')?.value || '').trim();
+  const prompt   = ($('cron-prompt')?.value   || '').trim();
+  const msgEl    = $('cron-msg');
+
+  if (!name || !agentId || !schedule || !prompt) {
+    if (msgEl) { msgEl.textContent = 'Fill in all fields'; msgEl.style.color = 'var(--red)'; }
+    return;
+  }
+  if (msgEl) { msgEl.textContent = 'Creating…'; msgEl.style.color = 'var(--muted)'; }
+
+  try {
+    const r = await apiFetch('/dashboard/api/cron', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, agentId, prompt, schedule }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      if (msgEl) { msgEl.textContent = 'Created! First run: ' + (d.job?.nextRunAt ? new Date(d.job.nextRunAt).toLocaleString() : '—'); msgEl.style.color = 'var(--green)'; }
+      $('cron-name').value = '';
+      $('cron-schedule').value = '';
+      $('cron-prompt').value = '';
+      updateCronPreview();
+      await loadSchedule();
+      setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 5000);
+    } else {
+      if (msgEl) { msgEl.textContent = d.error || 'Error'; msgEl.style.color = 'var(--red)'; }
+    }
+  } catch (e) {
+    if (msgEl) { msgEl.textContent = String(e); msgEl.style.color = 'var(--red)'; }
+  }
+}
+
+async function runCronNow(id) {
+  try {
+    const r = await apiFetch('/dashboard/api/cron/' + id + '/run', { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      await loadSchedule();
+      alert('Done: ' + (d.content || '').slice(0, 300));
+    } else {
+      alert('Error: ' + (d.error || 'failed'));
+    }
+  } catch (e) { alert(String(e)); }
+}
+
+async function toggleCronEnabled(id, enabled) {
+  try {
+    const r = await apiFetch('/dashboard/api/cron/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    });
+    const d = await r.json();
+    if (d.ok) await loadSchedule();
+    else alert(d.error || 'Update failed');
+  } catch (e) { alert(String(e)); }
+}
+
+async function deleteCronJob(id) {
+  if (!confirm('Delete this scheduled job?')) return;
+  try {
+    const r = await apiFetch('/dashboard/api/cron/' + id, { method: 'DELETE' });
+    const d = await r.json();
+    if (d.ok) await loadSchedule();
+    else alert(d.error || 'Delete failed');
+  } catch (e) { alert(String(e)); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Webhooks
+// ═══════════════════════════════════════════════════════════════
+async function loadWebhooks() {
+  const container = $('wh-list');
+  if (!container) return;
+  try {
+    const r = await apiFetch('/dashboard/api/webhooks');
+    const d = await r.json();
+    const list = d.webhooks || [];
+
+    // Populate agent selector
+    const agSel = $('wh-agent');
+    if (agSel && snapshotAgents.length) {
+      const current = agSel.value;
+      agSel.innerHTML = '<option value="">— select agent —</option>'
+        + snapshotAgents.map(a => '<option value="' + esc(a.id) + '"' + (a.id === current ? ' selected' : '') + '>' + esc(a.id) + '</option>').join('');
+    }
+
+    if (!list.length) {
+      container.innerHTML = '<div class="dossier-empty">No webhooks yet — create one above</div>';
+      return;
+    }
+
+    container.innerHTML = list.map(wh => {
+      const ts = wh.lastTriggeredAt ? new Date(wh.lastTriggeredAt).toLocaleString() : 'Never';
+      return '<div style="padding:14px 16px;border-bottom:1px solid var(--border)">'
+        + '<div style="display:flex;align-items:flex-start;gap:12px">'
+        + '<div style="flex:1;min-width:0">'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'
+        + '<span style="font-weight:600;font-size:13px">' + esc(wh.name) + '</span>'
+        + badge(wh.agentId, 'purple')
+        + '</div>'
+        // URL row
+        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
+        + '<code style="font-family:var(--font-mono);font-size:11px;background:var(--bg-card);padding:3px 8px;border-radius:6px;color:var(--accent);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(wh.url) + '</code>'
+        + '<button class="btn" style="font-size:10px;flex-shrink:0" onclick="copyToClipboard(' + JSON.stringify(wh.url) + ',this)">Copy URL</button>'
+        + '</div>'
+        // Secret row
+        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
+        + '<span style="font-size:11px;color:var(--muted)">Secret:</span>'
+        + '<code style="font-family:var(--font-mono);font-size:11px;background:var(--bg-card);padding:3px 8px;border-radius:6px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(wh.secret) + '</code>'
+        + '<button class="btn" style="font-size:10px;flex-shrink:0" onclick="copyToClipboard(' + JSON.stringify(wh.secret) + ',this)">Copy</button>'
+        + '</div>'
+        // Prompt template preview
+        + '<div style="font-size:11px;color:var(--muted);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">'
+        + 'Template: ' + esc(wh.promptTemplate.length > 80 ? wh.promptTemplate.slice(0, 80) + '…' : wh.promptTemplate)
+        + '</div>'
+        + '<div style="font-size:11px;color:var(--dim)">Triggered ' + wh.triggerCount + ' times · Last: ' + esc(ts) + '</div>'
+        + '</div>'
+        + '<button class="btn" style="font-size:11px;color:var(--red);flex-shrink:0" onclick="deleteWebhook(' + JSON.stringify(wh.id) + ')">Delete</button>'
+        + '</div>'
+        + '<div style="margin-top:10px;padding:8px 10px;background:var(--bg-card);border-radius:8px;font-family:var(--font-mono);font-size:11px;color:var(--muted)">'
+        + '<div style="margin-bottom:2px">curl -X POST ' + esc(wh.url) + ' \\\\</div>'
+        + '<div style="margin-bottom:2px;padding-left:16px">-H "Authorization: Bearer ' + esc(wh.secret) + '" \\\\</div>'
+        + '<div style="padding-left:16px">-d \'{"key":"value"}\'</div>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+  } catch (e) {
+    container.innerHTML = '<div class="dossier-empty" style="color:var(--red)">' + esc(String(e)) + '</div>';
+  }
+}
+
+async function createWebhook() {
+  const name     = ($('wh-name')?.value || '').trim();
+  const agentId  = $('wh-agent')?.value || '';
+  const template = ($('wh-template')?.value || '').trim();
+  const msgEl    = $('wh-msg');
+
+  if (!name || !agentId || !template) {
+    if (msgEl) { msgEl.textContent = 'Fill in all fields'; msgEl.style.color = 'var(--red)'; }
+    return;
+  }
+  if (msgEl) { msgEl.textContent = 'Creating…'; msgEl.style.color = 'var(--muted)'; }
+
+  try {
+    const r = await apiFetch('/dashboard/api/webhooks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, agentId, promptTemplate: template }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      if (msgEl) { msgEl.textContent = 'Created!'; msgEl.style.color = 'var(--green)'; }
+      $('wh-name').value = '';
+      $('wh-template').value = '';
+      await loadWebhooks();
+      setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 3000);
+    } else {
+      if (msgEl) { msgEl.textContent = d.error || 'Error'; msgEl.style.color = 'var(--red)'; }
+    }
+  } catch (e) {
+    if (msgEl) { msgEl.textContent = String(e); msgEl.style.color = 'var(--red)'; }
+  }
+}
+
+async function deleteWebhook(id) {
+  if (!confirm('Delete this webhook?')) return;
+  try {
+    const r = await apiFetch('/dashboard/api/webhooks/' + id, { method: 'DELETE' });
+    const d = await r.json();
+    if (d.ok) await loadWebhooks();
+    else alert(d.error || 'Delete failed');
+  } catch (e) { alert(String(e)); }
+}
+
+function copyToClipboard(text, btn) {
+  navigator.clipboard?.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  }).catch(() => {
+    prompt('Copy:', text);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Per-Agent Connections
+// ═══════════════════════════════════════════════════════════════
+async function loadConnections() {
+  const tbody = $('conn-tbl')?.querySelector('tbody');
+  if (!tbody) return;
+  try {
+    const r = await apiFetch('/dashboard/api/connections');
+    const d = await r.json();
+    const list = d.connections || [];
+    // Populate agent selects (conn-agent)
+    const agentSel = $('conn-agent');
+    if (agentSel && snapshotAgents.length) {
+      const cur = agentSel.value;
+      agentSel.innerHTML = '<option value="">— select agent —</option>';
+      snapshotAgents.forEach(function(a) {
+        const o = document.createElement('option');
+        o.value = a.id; o.textContent = a.id;
+        agentSel.appendChild(o);
+      });
+      if (cur) agentSel.value = cur;
+    }
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">no connections — add one above</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(function(c) {
+      const runBadge = c.running
+        ? '<span class="badge green">●&nbsp;running</span>'
+        : '<span class="badge red">○&nbsp;stopped</span>';
+      const botLabel = c.botUsername ? '@' + esc(c.botUsername) : '—';
+      const connBtn  = c.running
+        ? '<button class="btn" style="font-size:10px;color:var(--red)" onclick="disconnectAdapter(\'' + esc(c.id) + '\')">Disconnect</button>'
+        : '<button class="btn btn-primary" style="font-size:10px" onclick="connectAdapter(\'' + esc(c.id) + '\')">Connect</button>';
+      return '<tr>'
+        + '<td style="font-family:var(--font-mono);font-size:11px">' + esc(c.label) + '</td>'
+        + '<td>' + badge(c.platform, 'muted') + '</td>'
+        + '<td style="font-family:var(--font-mono);font-size:11px">' + esc(c.agentId) + '</td>'
+        + '<td style="font-family:var(--font-mono);font-size:11px">' + botLabel + '</td>'
+        + '<td>' + runBadge + '</td>'
+        + '<td style="display:flex;gap:6px;align-items:center">'
+        + connBtn
+        + '<button class="btn" style="font-size:10px;color:var(--red)" onclick="deleteConnection(\'' + esc(c.id) + '\')">✕</button>'
+        + '</td>'
+        + '</tr>';
+    }).join('');
+  } catch (e) {
+    const tbody2 = $('conn-tbl')?.querySelector('tbody');
+    if (tbody2) tbody2.innerHTML = '<tr><td colspan="6" class="empty">Error: ' + esc(String(e)) + '</td></tr>';
+  }
+}
+
+async function createConnection() {
+  const msgEl  = $('conn-msg');
+  const label  = ($('conn-label')?.value || '').trim();
+  const plat   = $('conn-platform')?.value || '';
+  const agentId = $('conn-agent')?.value || '';
+  const token  = ($('conn-token')?.value || '').trim();
+  if (!label || !plat || !agentId || !token) {
+    if (msgEl) { msgEl.style.color = 'var(--red)'; msgEl.textContent = 'All fields required'; }
+    return;
+  }
+  try {
+    const r = await apiFetch('/dashboard/api/connections', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label, platform: plat, agentId, token }),
+    });
+    const d = await r.json();
+    if (d.connection) {
+      if (msgEl) { msgEl.style.color = 'var(--green)'; msgEl.textContent = 'Created — click Connect to start'; }
+      $('conn-label').value = '';
+      $('conn-token').value = '';
+      await loadConnections();
+      setTimeout(function() { if (msgEl) msgEl.textContent = ''; }, 4000);
+    } else {
+      if (msgEl) { msgEl.style.color = 'var(--red)'; msgEl.textContent = d.error || 'Create failed'; }
+    }
+  } catch (e) { if (msgEl) { msgEl.style.color = 'var(--red)'; msgEl.textContent = String(e); } }
+}
+
+async function connectAdapter(id) {
+  try {
+    const r = await apiFetch('/dashboard/api/connections/' + id + '/connect', { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      await loadConnections();
+    } else {
+      alert(d.error || 'Connect failed');
+    }
+  } catch (e) { alert(String(e)); }
+}
+
+async function disconnectAdapter(id) {
+  try {
+    const r = await apiFetch('/dashboard/api/connections/' + id + '/disconnect', { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) await loadConnections();
+    else alert(d.error || 'Disconnect failed');
+  } catch (e) { alert(String(e)); }
+}
+
+async function deleteConnection(id) {
+  if (!confirm('Delete this connection?')) return;
+  try {
+    const r = await apiFetch('/dashboard/api/connections/' + id, { method: 'DELETE' });
+    const d = await r.json();
+    if (d.ok) await loadConnections();
+    else alert(d.error || 'Delete failed');
+  } catch (e) { alert(String(e)); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Audit Log
+// ═══════════════════════════════════════════════════════════════
+let auditDebounce = null;
+
+async function loadAuditLog() {
+  clearTimeout(auditDebounce);
+  auditDebounce = setTimeout(_doLoadAudit, 250);
+}
+
+async function _doLoadAudit() {
+  const container = $('audit-log-table');
+  if (!container) return;
+  const search = ($('audit-search')?.value || '').trim();
+  const event  = $('audit-event-filter')?.value || '';
+  const limit  = $('audit-limit')?.value || '100';
+  let qs = '?limit=' + limit;
+  if (event)  qs += '&event=' + encodeURIComponent(event);
+  if (search) qs += '&search=' + encodeURIComponent(search);
+  try {
+    const r = await apiFetch('/dashboard/api/audit' + qs);
+    if (!r.ok) { container.innerHTML = '<div class="dossier-empty" style="color:var(--red)">Failed to load audit log</div>'; return; }
+    const d = await r.json();
+    const entries = d.entries || [];
+    if (!entries.length) {
+      container.innerHTML = '<div class="dossier-empty">No audit entries</div>';
+      return;
+    }
+    const EVENT_COLORS = {
+      'connection:auth': 'green',
+      'connection:auth:failed': 'red',
+      'tool:request': 'purple',
+      'tool:denied': 'red',
+      'security:alert': 'yellow',
+      'security:threat': 'red',
+      'agent:start': 'green',
+      'agent:end': 'purple',
+      'memory:stored': 'purple',
+    };
+    const rows = entries.map(e => {
+      const ts = new Date(e.timestamp).toLocaleString();
+      const color = EVENT_COLORS[e.event] || '';
+      const evBadge = badge(e.event, color);
+      const detail = esc(e.detail || '');
+      const target = e.target ? '<span style="color:var(--muted);font-size:11px">' + esc(e.target) + '</span>' : '';
+      const hashShort = e.hash ? ('<span style="font-family:var(--font-mono);color:var(--dim);font-size:10px">' + esc(e.hash.slice(0, 10)) + '…</span>') : '';
+      return '<tr>'
+        + '<td style="white-space:nowrap;font-family:var(--font-mono);font-size:11px;color:var(--muted)">' + esc(ts) + '</td>'
+        + '<td>' + evBadge + '</td>'
+        + '<td style="font-family:var(--font-mono);font-size:11px">' + esc(e.actor) + '</td>'
+        + '<td>' + (target || '—') + '</td>'
+        + '<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">' + detail + '</td>'
+        + '<td>' + hashShort + '</td>'
+        + '</tr>';
+    }).join('');
+    container.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+      + '<thead><tr style="border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;text-transform:uppercase">'
+      + '<th style="padding:8px 12px;text-align:left;font-weight:500">Time</th>'
+      + '<th style="padding:8px 12px;text-align:left;font-weight:500">Event</th>'
+      + '<th style="padding:8px 12px;text-align:left;font-weight:500">Actor</th>'
+      + '<th style="padding:8px 12px;text-align:left;font-weight:500">Target</th>'
+      + '<th style="padding:8px 12px;text-align:left;font-weight:500">Detail</th>'
+      + '<th style="padding:8px 12px;text-align:left;font-weight:500">Hash</th>'
+      + '</tr></thead><tbody>'
+      + rows
+      + '</tbody></table>';
+    // style alternating rows
+    const trs = container.querySelectorAll('tbody tr');
+    trs.forEach((tr, i) => {
+      /** @type {HTMLElement} */(tr).style.borderBottom = '1px solid var(--border)';
+      if (i % 2 === 0) /** @type {HTMLElement} */(tr).style.background = 'var(--bg-card)';
+    });
+    container.querySelectorAll('td').forEach(td => {
+      /** @type {HTMLElement} */(td).style.padding = '7px 12px';
+      /** @type {HTMLElement} */(td).style.verticalAlign = 'middle';
+    });
+  } catch (e) {
+    container.innerHTML = '<div class="dossier-empty" style="color:var(--red)">' + esc(String(e)) + '</div>';
+  }
+}
+
+async function verifyAuditChain() {
+  const badge_el = $('audit-integrity-badge');
+  const btn = $('audit-verify-btn');
+  if (!badge_el || !btn) return;
+  btn.disabled = true;
+  badge_el.style.display = '';
+  badge_el.style.color = 'var(--muted)';
+  badge_el.textContent = 'Verifying…';
+  try {
+    const r = await apiFetch('/dashboard/api/audit/verify');
+    const d = await r.json();
+    if (d.valid) {
+      badge_el.style.color = 'var(--green)';
+      badge_el.textContent = '✓ Chain intact (' + (d.totalEntries || 0) + ' entries)';
+    } else {
+      badge_el.style.color = 'var(--red)';
+      badge_el.textContent = '✗ Tampered! ' + (d.error || '');
+    }
+    if (d.note) badge_el.textContent += ' — ' + d.note;
+  } catch (e) {
+    badge_el.style.color = 'var(--red)';
+    badge_el.textContent = 'Error: ' + String(e);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════

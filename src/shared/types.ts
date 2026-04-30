@@ -70,7 +70,16 @@ export type GatewayEvent =
   | 'dashboard:client-disconnected'
   // Memory events
   | 'memory:stored'
-  | 'memory:retrieved';
+  | 'memory:retrieved'
+  // Webhook events
+  | 'webhook:triggered'
+  // Cron events
+  | 'cron:triggered'
+  | 'cron:completed'
+  | 'cron:failed'
+  // Per-agent connection events
+  | 'messaging:connection:started'
+  | 'messaging:connection:stopped';
 
 /** Connection metadata */
 export interface ConnectionMeta {

@@ -32,6 +32,10 @@ import { Orchestrator } from '../orchestration/orchestrator.js';
 import { MessagingManager } from '../messaging/messaging-manager.js';
 import { SkillRegistry } from '../skills/skill-registry.js';
 import { DashboardServer, type DashboardSnapshot } from '../dashboard/dashboard-server.js';
+import { WebhookStore } from '../dashboard/webhook-store.js';
+import { CronStore } from '../dashboard/cron-store.js';
+import { CronScheduler } from '../dashboard/cron-scheduler.js';
+import { ConnectionStore } from '../dashboard/connection-store.js';
 import { TeamCoordinator } from '../roles/team-coordinator.js';
 import { eventBus } from '../shared/events.js';
 import { loadConfig } from '../config/config-loader.js';
@@ -77,6 +81,10 @@ export class GatewayServer {
   private skillRegistry: SkillRegistry;
   private dashboardServer: DashboardServer;
   private teamCoordinator: TeamCoordinator | null = null;
+  private webhookStore: WebhookStore | null = null;
+  private cronStore: CronStore | null = null;
+  private cronScheduler: CronScheduler | null = null;
+  private connectionStore: ConnectionStore | null = null;
   private mcpServerStatuses: Array<{ name: string; ready: boolean; tools: number }> = [];
   private messagingStatuses: Array<{ platform: string; running: boolean }> = [];
   private connections = new Map<string, { ws: WebSocket; meta: ConnectionMeta }>();
@@ -174,6 +182,23 @@ export class GatewayServer {
       });
     }
 
+    this.webhookStore = new WebhookStore(dataDir);
+    this.connectionStore = new ConnectionStore(dataDir, masterKey);
+
+    this.cronStore = new CronStore(dataDir);
+    this.cronScheduler = new CronScheduler(
+      this.cronStore,
+      async (agentId, prompt) => {
+        const result = await this.agentRuntime.run({
+          userMessage: prompt,
+          agentId,
+          channelId: `cron:${agentId}`,
+          peerId: 'cron',
+        });
+        return { content: result.content };
+      },
+    );
+
     this.dashboardServer = new DashboardServer(
       () => this.buildSnapshot(),
       this.authManager,
@@ -188,6 +213,22 @@ export class GatewayServer {
           this.config.agents.defaults = merged;
           console.log(`🔄 Agents hot-reloaded: ${list.length} agent(s)`);
         },
+        auditLog: this.auditLog,
+        webhookStore: this.webhookStore,
+        onWebhookTrigger: async (agentId, prompt) => {
+          const result = await this.agentRuntime.run({
+            userMessage: prompt,
+            agentId,
+            channelId: `webhook:${agentId}`,
+            peerId: 'webhook',
+          });
+          return { content: result.content };
+        },
+        baseUrl: `http://${this.config.gateway.bind}:${this.config.gateway.port}`,
+        cronStore:       this.cronStore ?? undefined,
+        cronScheduler:   this.cronScheduler ?? undefined,
+        sessionStore:    this.sessionStore,
+        connectionStore: this.connectionStore ?? undefined,
       },
     );
 
@@ -314,6 +355,24 @@ export class GatewayServer {
           }
           // Wire messaging manager into dashboard so hot-connect routes work
           this.dashboardServer.setMessagingManager(this.messagingManager);
+
+          // Auto-start enabled per-agent connections from the connection store
+          if (this.connectionStore) {
+            const storedConns = this.connectionStore.list().filter(c => c.enabled);
+            for (const conn of storedConns) {
+              const full = this.connectionStore.getFull(conn.id);
+              if (!full) continue;
+              try {
+                const { botUsername } = await this.messagingManager.startNamedConnection(
+                  conn.id, conn.platform, full.token, conn.agentId,
+                );
+                this.connectionStore.setConnected(conn.id, botUsername ?? null);
+                console.log(`🤖 ${conn.platform} (${conn.label}): auto-started`);
+              } catch (err) {
+                console.warn(`⚠️  ${conn.platform} (${conn.label}) auto-start failed: ${(err as Error).message}`);
+              }
+            }
+          }
         }
 
         // Log dashboard URL
@@ -358,6 +417,11 @@ export class GatewayServer {
           console.log(`   ${token}`);
           console.log('   Save this token — it will not be shown again.\n');
         }
+
+        // Start cron scheduler after all subsystems are ready
+        this.cronScheduler?.start();
+        const cronCount = this.cronStore?.list().filter(j => j.enabled).length ?? 0;
+        if (cronCount > 0) console.log(`⏰ Cron: ${cronCount} scheduled job(s) active`);
 
         resolve();
       });

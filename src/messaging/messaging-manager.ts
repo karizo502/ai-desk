@@ -44,6 +44,11 @@ export class MessagingManager {
   /** channelId → next queued message (max 1) */
   private channelQueue = new Map<string, IncomingMessage>();
 
+  /** Named per-agent connections: connectionId → adapter instance */
+  private namedAdapters = new Map<string, MessagingAdapter>();
+  /** Adapter instance → agentId override (for per-agent routing) */
+  private adapterAgents = new Map<MessagingAdapter, string>();
+
   constructor(opts: {
     config: MessagingConfig;
     runtime: AgentRuntime;
@@ -90,7 +95,11 @@ export class MessagingManager {
 
   async stopAll(): Promise<void> {
     await Promise.allSettled(this.adapters.map(a => a.stop()));
+    // Stop named adapters too
+    await Promise.allSettled([...this.namedAdapters.values()].map(a => a.stop()));
     this.adapters = [];
+    this.namedAdapters.clear();
+    this.adapterAgents.clear();
     this.channelLocks.clear();
     this.channelQueue.clear();
   }
@@ -139,6 +148,66 @@ export class MessagingManager {
     return this.adapters.some(a => a.platform === 'telegram' && a.isRunning);
   }
 
+  // ─── Named per-agent connections ──────────────────────────
+
+  /** Start a named per-agent connection (Telegram or Discord). */
+  async startNamedConnection(
+    id: string,
+    platform: 'telegram' | 'discord',
+    token: string,
+    agentId: string,
+  ): Promise<{ botUsername?: string }> {
+    // Stop existing connection with same id if any
+    await this.stopNamedConnection(id);
+
+    let adapter: MessagingAdapter;
+    if (platform === 'telegram') {
+      const cfg = { enabled: true, maxConcurrentPerChat: 1, ...(this.config.telegram ?? {}) };
+      adapter = new TelegramAdapter(cfg, token);
+    } else {
+      const cfg = { enabled: true, maxConcurrentPerChannel: 1, ...(this.config.discord ?? {}) };
+      adapter = new DiscordAdapter(cfg, token);
+    }
+
+    adapter.on('error', err =>
+      eventBus.emit('messaging:error', { platform, error: (err as Error).message }),
+    );
+
+    await adapter.start(msg => this.route(adapter, msg));
+
+    this.namedAdapters.set(id, adapter);
+    this.adapterAgents.set(adapter, agentId);
+
+    eventBus.emit('messaging:connection:started', { id, platform, agentId });
+
+    let botUsername: string | undefined;
+    if (platform === 'telegram') {
+      botUsername = await (adapter as unknown as { getBotUsername(): Promise<string> })
+        .getBotUsername().catch(() => '');
+    }
+
+    return { botUsername };
+  }
+
+  /** Stop a named per-agent connection. Safe to call if not running. */
+  async stopNamedConnection(id: string): Promise<void> {
+    const adapter = this.namedAdapters.get(id);
+    if (!adapter) return;
+    await adapter.stop().catch(() => {});
+    this.adapterAgents.delete(adapter);
+    this.namedAdapters.delete(id);
+    eventBus.emit('messaging:connection:stopped', { id });
+  }
+
+  /** Returns a map of connectionId → running status for all named adapters. */
+  listNamedConnections(): Record<string, boolean> {
+    const result: Record<string, boolean> = {};
+    for (const [id, adapter] of this.namedAdapters) {
+      result[id] = adapter.isRunning;
+    }
+    return result;
+  }
+
   // ─── Routing ─────────────────────────────────────────────
 
   private async route(adapter: MessagingAdapter, msg: IncomingMessage): Promise<void> {
@@ -185,7 +254,11 @@ export class MessagingManager {
   }
 
   private async dispatch(adapter: MessagingAdapter, msg: IncomingMessage): Promise<void> {
-    const agentId = msg.agentIdHint ?? this.agentIdFor(msg.platform) ?? this.defaultAgentId;
+    // Per-adapter agent override takes priority over platform-level config
+    const agentId = msg.agentIdHint
+      ?? this.adapterAgents.get(adapter)
+      ?? this.agentIdFor(msg.platform)
+      ?? this.defaultAgentId;
 
     // Send typing indicator, refresh every TYPING_REPEAT_MS
     await adapter.sendTyping(msg.channelId);

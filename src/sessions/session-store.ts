@@ -158,6 +158,34 @@ export class SessionStore {
     return rows.map(r => this.deserialize(r));
   }
 
+  /**
+   * List sessions metadata without decrypting transcript.
+   * Fast path for the History viewer's left panel.
+   */
+  listMeta(opts?: { agentId?: string; state?: string; limit?: number }): Array<Omit<SessionData, 'transcript' | 'metadata'>> {
+    const { agentId, state, limit = 200 } = opts ?? {};
+    let query = 'SELECT id, agent_id, channel_id, peer_id, created_at, last_active_at, state FROM sessions WHERE 1=1';
+    const params: unknown[] = [];
+    if (agentId) { query += ' AND agent_id = ?'; params.push(agentId); }
+    if (state)   { query += ' AND state = ?';    params.push(state); }
+    query += ' ORDER BY last_active_at DESC LIMIT ?';
+    params.push(limit);
+    return (this.db.prepare(query).all(...params) as RawSessionRow[]).map(r => ({
+      id:           r.id,
+      agentId:      r.agent_id,
+      channelId:    r.channel_id,
+      peerId:       r.peer_id,
+      createdAt:    r.created_at,
+      lastActiveAt: r.last_active_at,
+      state:        r.state as SessionData['state'],
+    }));
+  }
+
+  /** Hard-delete a single session by ID. */
+  purge(sessionId: string): boolean {
+    return this.db.prepare('DELETE FROM sessions WHERE id = ?').run(sessionId).changes > 0;
+  }
+
   /** Cleanup old closed sessions */
   purgeOld(maxAgeMs: number = 7 * 86_400_000): number {
     const cutoff = Date.now() - maxAgeMs;

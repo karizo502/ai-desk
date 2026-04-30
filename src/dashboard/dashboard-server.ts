@@ -16,9 +16,19 @@ import { CredentialRoutes } from './credential-routes.js';
 import { AgentRoutes, type ReloadFn } from './agent-routes.js';
 import { TeamRoutes } from './team-routes.js';
 import { ConfigManager } from './config-manager.js';
+import { WebhookRoutes, type WebhookTriggerFn } from './webhook-routes.js';
+import { WebhookStore } from './webhook-store.js';
+import { CronRoutes } from './cron-routes.js';
+import type { CronStore } from './cron-store.js';
+import type { CronScheduler } from './cron-scheduler.js';
+import { SessionRoutes } from './session-routes.js';
+import type { SessionStore } from '../sessions/session-store.js';
+import { ConnectionRoutes } from './connection-routes.js';
+import type { ConnectionStore } from './connection-store.js';
 import { eventBus } from '../shared/events.js';
 import type { CredentialStore } from '../auth/credential-store.js';
 import type { AuthManager } from '../auth/auth-manager.js';
+import type { AuditLog } from '../security/audit-log.js';
 
 export interface AgentSnapshot {
   id: string;
@@ -94,20 +104,53 @@ export class DashboardServer {
   private credentialRoutes: CredentialRoutes | null = null;
   private agentRoutes: AgentRoutes | null = null;
   private teamRoutes: TeamRoutes | null = null;
+  private webhookRoutes: WebhookRoutes | null = null;
+  private cronRoutes: CronRoutes | null = null;
+  private sessionRoutes: SessionRoutes | null = null;
+  private connectionRoutes: ConnectionRoutes | null = null;
+  private auditLog: AuditLog | null = null;
 
   constructor(
     snapshotFn: () => DashboardSnapshot,
     authManager: AuthManager,
     credStore?: CredentialStore,
-    opts?: { configPath?: string; onAgentReload?: ReloadFn },
+    opts?: {
+      configPath?: string;
+      onAgentReload?: ReloadFn;
+      auditLog?: AuditLog;
+      webhookStore?: WebhookStore;
+      onWebhookTrigger?: WebhookTriggerFn;
+      baseUrl?: string;
+      cronStore?: CronStore;
+      cronScheduler?: CronScheduler;
+      sessionStore?: SessionStore;
+      connectionStore?: ConnectionStore;
+    },
   ) {
     this.snapshotFn = snapshotFn;
     this.authManager = authManager;
     if (credStore) this.credentialRoutes = new CredentialRoutes(credStore);
+    if (opts?.auditLog) this.auditLog = opts.auditLog;
     if (opts?.configPath) {
       const cfg = new ConfigManager(opts.configPath);
       this.agentRoutes = new AgentRoutes(cfg, opts.onAgentReload);
       this.teamRoutes  = new TeamRoutes(cfg);
+    }
+    if (opts?.webhookStore && opts?.onWebhookTrigger) {
+      this.webhookRoutes = new WebhookRoutes(
+        opts.webhookStore,
+        opts.onWebhookTrigger,
+        opts.baseUrl ?? 'http://127.0.0.1:18789',
+      );
+    }
+    if (opts?.cronStore && opts?.cronScheduler) {
+      this.cronRoutes = new CronRoutes(opts.cronStore, opts.cronScheduler);
+    }
+    if (opts?.sessionStore) {
+      this.sessionRoutes = new SessionRoutes(opts.sessionStore);
+    }
+    if (opts?.connectionStore) {
+      this.connectionRoutes = new ConnectionRoutes(opts.connectionStore);
     }
 
     // Forward every gateway event to SSE clients
@@ -124,6 +167,7 @@ export class DashboardServer {
   /** Wire up the MessagingManager after it has been started by the gateway. */
   setMessagingManager(mgr: import('../messaging/messaging-manager.js').MessagingManager): void {
     this.credentialRoutes?.setMessagingManager(mgr);
+    this.connectionRoutes?.setMessagingManager(mgr);
   }
 
   /** Call from the gateway's handleHttp. Returns true if the request was handled. */
@@ -144,6 +188,9 @@ export class DashboardServer {
       return true;
     }
 
+    // POST /webhook/:id — public trigger (auth via webhook secret, not dashboard token)
+    if (this.webhookRoutes?.handlePublic(req, res)) return true;
+
     // GET /dashboard is public (it serves the SPA which redirects to /login if no localStorage)
     if (url === '/dashboard' || url === '/dashboard/') {
       res.writeHead(200, {
@@ -160,6 +207,10 @@ export class DashboardServer {
     if (this.credentialRoutes?.handle(req, res)) return true;
     if (this.agentRoutes?.handle(req, res)) return true;
     if (this.teamRoutes?.handle(req, res)) return true;
+    if (this.webhookRoutes?.handle(req, res)) return true;
+    if (this.cronRoutes?.handle(req, res)) return true;
+    if (this.sessionRoutes?.handle(req, res)) return true;
+    if (this.connectionRoutes?.handle(req, res)) return true;
 
     if (url === '/dashboard' || url === '/dashboard/') {
       res.writeHead(200, {
@@ -179,6 +230,11 @@ export class DashboardServer {
       const snapshot = this.snapshotFn();
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(snapshot, null, 2));
+      return true;
+    }
+
+    if (url.startsWith('/dashboard/api/audit')) {
+      this.handleAuditApi(req, res);
       return true;
     }
 
@@ -215,6 +271,49 @@ export class DashboardServer {
     }
 
     return true;
+  }
+
+  private handleAuditApi(req: IncomingMessage, res: ServerResponse): void {
+    const parsedUrl = new URL(req.url ?? '', `http://${req.headers.host}`);
+    const sub = parsedUrl.pathname.replace('/dashboard/api/audit', '') || '/';
+
+    res.setHeader('Content-Type', 'application/json');
+
+    if (sub === '/verify') {
+      if (!this.auditLog) {
+        res.writeHead(200);
+        res.end(JSON.stringify({ valid: true, totalEntries: 0, note: 'AuditLog not wired' }));
+        return;
+      }
+      res.writeHead(200);
+      res.end(JSON.stringify(this.auditLog.verifyIntegrity()));
+      return;
+    }
+
+    // GET /dashboard/api/audit?limit=&event=&search=
+    if (!this.auditLog) {
+      res.writeHead(200);
+      res.end(JSON.stringify({ entries: [], total: 0 }));
+      return;
+    }
+
+    const limit  = Math.min(parseInt(parsedUrl.searchParams.get('limit') ?? '100', 10), 500);
+    const event  = parsedUrl.searchParams.get('event') ?? undefined;
+    const search = (parsedUrl.searchParams.get('search') ?? '').toLowerCase().trim();
+
+    let entries = this.auditLog.recent(limit, event as never);
+
+    if (search) {
+      entries = entries.filter(e =>
+        e.actor.toLowerCase().includes(search) ||
+        (e.target ?? '').toLowerCase().includes(search) ||
+        (e.detail ?? '').toLowerCase().includes(search) ||
+        e.event.toLowerCase().includes(search),
+      );
+    }
+
+    res.writeHead(200);
+    res.end(JSON.stringify({ entries, total: entries.length }));
   }
 
   destroy(): void {
