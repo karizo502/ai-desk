@@ -3038,7 +3038,7 @@ function histFilter() {
     const stateColor = s.state === 'active' ? 'var(--green)' : s.state === 'idle' ? 'var(--yellow)' : 'var(--dim)';
     const isSelected = histSelected?.id === s.id;
     const shortId = s.id.slice(-8).toUpperCase();
-    return '<button class="hist-session-item' + (isSelected ? ' selected' : '') + '" onclick="openSession(' + JSON.stringify(s.id) + ')">'
+    return '<button class="hist-session-item' + (isSelected ? ' selected' : '') + '" onclick="openSession(\\'' + s.id + '\\')">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">'
       + '<div style="display:flex;align-items:center;gap:6px">'
       + '<span style="font-family:var(--font-mono);font-size:9px;letter-spacing:.18em;color:var(--muted)">' + esc(src.icon) + ' S-' + esc(shortId) + '</span>'
@@ -3324,10 +3324,10 @@ async function loadSchedule() {
         + '</div>'
         // Action buttons column
         + '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0">'
-        + '<button class="btn primary" style="font-size:11px" onclick="runCronNow(' + JSON.stringify(job.id) + ')">▶ Run Now</button>'
-        + '<button class="btn" style="font-size:11px" onclick="toggleCronEnabled(' + JSON.stringify(job.id) + ',' + !job.enabled + ')">'
+        + '<button class="btn primary" style="font-size:11px" onclick="runCronNow(\\'' + job.id + '\\')">▶ Run Now</button>'
+        + '<button class="btn" style="font-size:11px" onclick="toggleCronEnabled(\\'' + job.id + '\\',' + !job.enabled + ')">'
         + (job.enabled ? 'Disable' : 'Enable') + '</button>'
-        + '<button class="btn" style="font-size:11px;color:var(--red)" onclick="deleteCronJob(' + JSON.stringify(job.id) + ')">Delete</button>'
+        + '<button class="btn" style="font-size:11px;color:var(--red)" onclick="deleteCronJob(\\'' + job.id + '\\')">Delete</button>'
         + '</div>'
         + '</div>'
         + '</div>';
@@ -3445,13 +3445,13 @@ async function loadWebhooks() {
         // URL row
         + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
         + '<code style="font-family:var(--font-mono);font-size:11px;background:var(--bg-card);padding:3px 8px;border-radius:6px;color:var(--accent);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(wh.url) + '</code>'
-        + '<button class="btn" style="font-size:10px;flex-shrink:0" onclick="copyToClipboard(' + JSON.stringify(wh.url) + ',this)">Copy URL</button>'
+        + '<button class="btn" style="font-size:10px;flex-shrink:0" onclick="copyToClipboard(this.dataset.v,this)" data-v="' + esc(wh.url) + '">Copy URL</button>'
         + '</div>'
         // Secret row
         + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
         + '<span style="font-size:11px;color:var(--muted)">Secret:</span>'
         + '<code style="font-family:var(--font-mono);font-size:11px;background:var(--bg-card);padding:3px 8px;border-radius:6px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(wh.secret) + '</code>'
-        + '<button class="btn" style="font-size:10px;flex-shrink:0" onclick="copyToClipboard(' + JSON.stringify(wh.secret) + ',this)">Copy</button>'
+        + '<button class="btn" style="font-size:10px;flex-shrink:0" onclick="copyToClipboard(this.dataset.v,this)" data-v="' + esc(wh.secret) + '">Copy</button>'
         + '</div>'
         // Prompt template preview
         + '<div style="font-size:11px;color:var(--muted);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">'
@@ -3459,7 +3459,7 @@ async function loadWebhooks() {
         + '</div>'
         + '<div style="font-size:11px;color:var(--dim)">Triggered ' + wh.triggerCount + ' times · Last: ' + esc(ts) + '</div>'
         + '</div>'
-        + '<button class="btn" style="font-size:11px;color:var(--red);flex-shrink:0" onclick="deleteWebhook(' + JSON.stringify(wh.id) + ')">Delete</button>'
+        + '<button class="btn" style="font-size:11px;color:var(--red);flex-shrink:0" onclick="deleteWebhook(\\'' + wh.id + '\\')">Delete</button>'
         + '</div>'
         + '<div style="margin-top:10px;padding:8px 10px;background:var(--bg-card);border-radius:8px;font-family:var(--font-mono);font-size:11px;color:var(--muted)">'
         + '<div style="margin-bottom:2px">curl -X POST ' + esc(wh.url) + ' \\\\</div>'
