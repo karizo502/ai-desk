@@ -3225,7 +3225,7 @@ async function deleteHistSession() {
 // Describe a cron expression in plain English (client-side, no server needed)
 function describeSchedule(expr) {
   if (!expr) return expr;
-  const p = expr.trim().split(/\s+/);
+  const p = expr.trim().split(/\\s+/);
   if (p.length !== 5) return expr;
   const [mn, hr, dom, , dow] = p;
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -3233,22 +3233,22 @@ function describeSchedule(expr) {
 
   if (expr === '* * * * *') return 'Every minute';
   if (mn === '0' && hr === '*' && domAll && dowAll) return 'Every hour';
-  if (mn.match(/^\*\/\d+$/) && hr === '*' && domAll && dowAll) return 'Every ' + mn.slice(2) + ' min';
-  if (hr.match(/^\*\/\d+$/) && mn === '0' && domAll && dowAll) return 'Every ' + hr.slice(2) + ' hours';
+  if (mn.match(/^\\*\\/\\d+$/) && hr === '*' && domAll && dowAll) return 'Every ' + mn.slice(2) + ' min';
+  if (hr.match(/^\\*\\/\\d+$/) && mn === '0' && domAll && dowAll) return 'Every ' + hr.slice(2) + ' hours';
 
-  const hrStr = hr.match(/^\d+$/) ? hr.padStart(2,'0') + ':' + mn.padStart(2,'0') + ' UTC' : null;
+  const hrStr = hr.match(/^\\d+$/) ? hr.padStart(2,'0') + ':' + mn.padStart(2,'0') + ' UTC' : null;
 
   if (hrStr && domAll && dowAll) return 'Daily at ' + hrStr;
-  if (hrStr && domAll && dow.match(/^\d+$/)) {
+  if (hrStr && domAll && dow.match(/^\\d+$/)) {
     const d = parseInt(dow,10);
     return (days[d] || 'Day ' + d) + 's at ' + hrStr;
   }
-  if (hrStr && domAll && dow.match(/^\d+-\d+$/)) {
+  if (hrStr && domAll && dow.match(/^\\d+-\\d+$/)) {
     const [lo,hi] = dow.split('-').map(Number);
     if (lo === 1 && hi === 5) return 'Weekdays at ' + hrStr;
     return days.slice(lo, hi+1).join('–') + ' at ' + hrStr;
   }
-  if (hrStr && dom.match(/^\d+$/) && dowAll) return 'Monthly on ' + dom + ' at ' + hrStr;
+  if (hrStr && dom.match(/^\\d+$/) && dowAll) return 'Monthly on ' + dom + ' at ' + hrStr;
   return expr;
 }
 
