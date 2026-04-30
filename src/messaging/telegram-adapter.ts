@@ -38,9 +38,17 @@ interface TgMessage {
   date: number;
 }
 
+interface TgCallbackQuery {
+  id: string;
+  from: TgUser;
+  message?: TgMessage;
+  data?: string;
+}
+
 interface TgUpdate {
   update_id: number;
   message?: TgMessage;
+  callback_query?: TgCallbackQuery;
 }
 
 interface TgResponse<T> {
@@ -57,6 +65,9 @@ export class TelegramAdapter extends MessagingAdapter {
   private running = false;
   private stopSignal = false;
   private botUsername = '';
+
+  /** requestId → resolve(approved) for pending inline-keyboard approvals */
+  private pendingApprovals = new Map<string, (approved: boolean) => void>();
 
   constructor(config: TelegramConfig, token?: string) {
     super();
@@ -135,13 +146,19 @@ export class TelegramAdapter extends MessagingAdapter {
         const updates = await this.api<TgUpdate[]>('getUpdates', {
           offset: this.offset,
           timeout: POLL_TIMEOUT,
-          allowed_updates: ['message'],
+          allowed_updates: ['message', 'callback_query'],
         });
 
         backoff = 1000; // reset on success
 
         for (const update of updates) {
           this.offset = update.update_id + 1;
+
+          // ── Inline-keyboard callback (approval response) ──────────
+          if (update.callback_query) {
+            this.handleCallbackQuery(update.callback_query).catch(() => {});
+            continue;
+          }
 
           const msg = update.message;
           if (!msg?.text) continue;
@@ -177,6 +194,96 @@ export class TelegramAdapter extends MessagingAdapter {
     }
 
     this.running = false;
+  }
+
+  /**
+   * Send a tool-approval request to approvalChatId as an inline-keyboard message.
+   * Returns a promise that resolves to true (approved) or false (denied/timeout).
+   */
+  async requestApprovalViaTelegram(opts: {
+    requestId: string;
+    toolName: string;
+    input: Record<string, unknown>;
+    reason: string;
+    timeoutMs: number;
+  }): Promise<boolean> {
+    const chatId = this.config.approvalChatId;
+    if (!chatId) return false;
+
+    const inputPreview = JSON.stringify(opts.input, null, 2).slice(0, 800);
+    const text =
+      `⚠️ *Tool Approval Required*\n\n` +
+      `Tool: \`${opts.toolName}\`\n` +
+      `Reason: ${opts.reason}\n\n` +
+      `\`\`\`json\n${inputPreview}\n\`\`\``;
+
+    await this.api('sendMessage', {
+      chat_id: chatId,
+      text,
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '✅ Approve', callback_data: `approve:${opts.requestId}` },
+          { text: '❌ Deny',    callback_data: `deny:${opts.requestId}` },
+        ]],
+      },
+    }).catch(() => { /* best-effort */ });
+
+    return new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => {
+        this.pendingApprovals.delete(opts.requestId);
+        resolve(false);
+      }, opts.timeoutMs);
+
+      this.pendingApprovals.set(opts.requestId, (approved) => {
+        clearTimeout(timer);
+        resolve(approved);
+      });
+    });
+  }
+
+  private async handleCallbackQuery(cq: TgCallbackQuery): Promise<void> {
+    // Acknowledge the button tap so Telegram removes the loading spinner
+    await this.api('answerCallbackQuery', { callback_query_id: cq.id }).catch(() => {});
+
+    const data = cq.data ?? '';
+    const approveMatch = data.match(/^approve:(.+)$/);
+    const denyMatch    = data.match(/^deny:(.+)$/);
+
+    if (approveMatch) {
+      const requestId = approveMatch[1];
+      const resolve = this.pendingApprovals.get(requestId);
+      if (resolve) { this.pendingApprovals.delete(requestId); resolve(true); }
+      // Edit the message to show approved state
+      if (cq.message) {
+        await this.api('editMessageReplyMarkup', {
+          chat_id: cq.message.chat.id,
+          message_id: cq.message.message_id,
+          reply_markup: { inline_keyboard: [] },
+        }).catch(() => {});
+        await this.api('sendMessage', {
+          chat_id: cq.message.chat.id,
+          text: `✅ Approved`,
+          reply_to_message_id: cq.message.message_id,
+        }).catch(() => {});
+      }
+    } else if (denyMatch) {
+      const requestId = denyMatch[1];
+      const resolve = this.pendingApprovals.get(requestId);
+      if (resolve) { this.pendingApprovals.delete(requestId); resolve(false); }
+      if (cq.message) {
+        await this.api('editMessageReplyMarkup', {
+          chat_id: cq.message.chat.id,
+          message_id: cq.message.message_id,
+          reply_markup: { inline_keyboard: [] },
+        }).catch(() => {});
+        await this.api('sendMessage', {
+          chat_id: cq.message.chat.id,
+          text: `❌ Denied`,
+          reply_to_message_id: cq.message.message_id,
+        }).catch(() => {});
+      }
+    }
   }
 
   private async api<T>(method: string, params: Record<string, unknown>): Promise<T> {

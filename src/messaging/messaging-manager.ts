@@ -21,6 +21,7 @@ import { TelegramAdapter } from './telegram-adapter.js';
 import { DiscordAdapter } from './discord-adapter.js';
 import type { MessagingAdapter, IncomingMessage } from './adapter.js';
 import type { AgentRuntime } from '../agents/agent-runtime.js';
+import type { ApprovalRequester } from '../agents/tool-executor.js';
 import type { ThreatDetector } from '../security/threat-detector.js';
 import type { MessagingConfig } from '../config/schema.js';
 import { eventBus } from '../shared/events.js';
@@ -260,6 +261,27 @@ export class MessagingManager {
       ?? this.agentIdFor(msg.platform)
       ?? this.defaultAgentId;
 
+    // Build a Telegram inline-keyboard approval requester when all conditions are met:
+    //   1. Message came from Telegram
+    //   2. The agent has telegramApproval: true
+    //   3. The Telegram config has approvalChatId set
+    const requestApproval: ApprovalRequester | undefined = (() => {
+      if (msg.platform !== 'telegram') return undefined;
+      if (!(adapter instanceof TelegramAdapter)) return undefined;
+      if (!this.config.telegram?.approvalChatId) return undefined;
+
+      const agentCfg = this.runtime.getAgent(agentId);
+      if (!agentCfg?.telegramApproval) return undefined;
+
+      return (req) => (adapter as TelegramAdapter).requestApprovalViaTelegram({
+        requestId: req.requestId,
+        toolName: req.toolName,
+        input: req.input,
+        reason: req.reason,
+        timeoutMs: 5 * 60_000, // 5-minute window to respond
+      });
+    })();
+
     // Send typing indicator, refresh every TYPING_REPEAT_MS
     await adapter.sendTyping(msg.channelId);
     const typingTimer = setInterval(
@@ -273,6 +295,7 @@ export class MessagingManager {
         agentId,
         channelId: msg.channelId,
         peerId: msg.peerId,
+        requestApproval,
         onProgress: (event) => {
           // Refresh typing on each agent step so it doesn't expire
           if (event.type === 'thinking' || event.type === 'tool_use') {

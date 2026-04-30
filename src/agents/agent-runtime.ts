@@ -41,6 +41,11 @@ export interface AgentRunRequest {
   onProgress?: (event: AgentProgressEvent) => void;
   /** Override max steps for this run */
   maxSteps?: number;
+  /**
+   * Per-run approval requester — overrides the gateway's WebSocket-based default.
+   * Used by the Telegram adapter to route approval requests as inline-keyboard messages.
+   */
+  requestApproval?: import('./tool-executor.js').ApprovalRequester;
 }
 
 export type AgentProgressEvent =
@@ -131,6 +136,11 @@ export class AgentRuntime {
   /** Returns how many concurrent runs are active for a given agentId */
   activeRunCount(agentId: string): number {
     return this.activeRuns.get(agentId) ?? 0;
+  }
+
+  /** Returns the agent config for the given id, or undefined if not found */
+  getAgent(agentId: string): AgentConfig | undefined {
+    return this.agents.get(agentId);
   }
 
   async run(req: AgentRunRequest): Promise<AgentRunResult> {
@@ -291,6 +301,7 @@ export class AgentRuntime {
             runId,
             workspace,
             subagentDepth: 0,
+            requestApproval: req.requestApproval,
           });
 
           req.onProgress?.({

@@ -121,6 +121,12 @@ export const AgentConfigSchema = Type.Object({
   name: Type.Optional(Type.String()),
   avatarUrl: Type.Optional(Type.String()),
   personality: Type.Optional(Type.String()),
+  /**
+   * Allow this agent to send tool-approval requests via Telegram inline keyboard.
+   * Requires messaging.telegram.approvalChatId to be configured.
+   * Agents without this flag always fall back to dashboard (WebSocket) approval.
+   */
+  telegramApproval: Type.Optional(Type.Boolean()),
 });
 export type AgentConfig = Static<typeof AgentConfigSchema>;
 
@@ -190,6 +196,12 @@ export const TelegramConfigSchema = Type.Object({
   allowedChatIds: Type.Optional(Type.Array(Type.Number())),
   /** Max concurrent in-flight agent calls per chat (default 1) */
   maxConcurrentPerChat: Type.Number({ default: 1, minimum: 1, maximum: 5 }),
+  /**
+   * Chat ID of the admin (owner) who will receive tool-approval inline-keyboard
+   * messages. Required for Telegram-based approval to work.
+   * Find your chat ID by messaging @userinfobot on Telegram.
+   */
+  approvalChatId: Type.Optional(Type.Number()),
 });
 export type TelegramConfig = Static<typeof TelegramConfigSchema>;
 

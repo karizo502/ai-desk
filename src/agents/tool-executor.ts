@@ -25,6 +25,8 @@ export interface ToolExecuteRequest {
   runId: string;
   workspace: string;
   subagentDepth: number;
+  /** Per-run approval requester — overrides the instance-level default when provided */
+  requestApproval?: ApprovalRequester;
 }
 
 export interface ToolExecuteResult {
@@ -115,7 +117,8 @@ export class ToolExecutor {
     // Approval flow if required
     let approved = decision.allowed;
     if (!decision.allowed && decision.requiresApproval) {
-      approved = await this.requestApproval({
+      const requester = req.requestApproval ?? this.requestApproval;
+      approved = await requester({
         requestId: uuid(),
         toolName: req.call.name,
         input: req.call.input,
