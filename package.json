@@ -1,6 +1,6 @@
 {
   "name": "ai-desk",
-  "version": "0.1.3",
+  "version": "0.1.5",
   "description": "Security-First, Token-Efficient AI Gateway",
   "type": "module",
   "engines": {

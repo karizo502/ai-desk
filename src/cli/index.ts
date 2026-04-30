@@ -13,6 +13,10 @@ import { Command } from 'commander';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+
+const _require = createRequire(import.meta.url);
+const { version } = _require('../../package.json');
 import { spawn } from 'node:child_process';
 import { runOnboard } from './onboard.js';
 import { installDaemon, uninstallDaemon, startDaemon, stopDaemon, restartDaemon, daemonStatus } from './daemon.js';
@@ -97,7 +101,7 @@ const program = new Command();
 program
   .name('ai-desk')
   .description('AI_DESK — Security-First AI Gateway')
-  .version('0.1.0');
+  .version(version);
 
 // ─── Onboard ──────────────────────────────────────────────
 program

@@ -137,6 +137,13 @@ export class DashboardServer {
       return true;
     }
 
+    // Favicon — no auth required
+    if (url === '/favicon.ico') {
+      res.writeHead(204);
+      res.end();
+      return true;
+    }
+
     // GET /dashboard is public (it serves the SPA which redirects to /login if no localStorage)
     if (url === '/dashboard' || url === '/dashboard/') {
       res.writeHead(200, {

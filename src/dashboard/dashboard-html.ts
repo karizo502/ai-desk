@@ -280,15 +280,17 @@ tr:hover td { background: rgba(200,144,72,0.06); }
 .filter-btn:hover { color: var(--text); border-color: var(--text); }
 .filter-btn.active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
 .roster-head { display: grid; grid-template-columns: 36px 1fr 2fr 0.7fr 0.7fr 0.9fr; gap: 0; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.2em; color: var(--muted); padding: 10px 16px; border-bottom: 1px solid var(--border); text-transform: uppercase; }
-.roster-row { display: grid; grid-template-columns: 36px 1fr 2fr 0.7fr 0.7fr 0.9fr; gap: 0; padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; font-size: 12px; align-items: center; border-left: 2px solid transparent; }
+.roster-row { display: grid; grid-template-columns: 36px 28px 1fr 2fr 0.7fr 0.7fr 0.9fr; gap: 0; padding: 10px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; font-size: 12px; align-items: center; border-left: 2px solid transparent; }
 .roster-row:last-child { border-bottom: none; }
 .roster-row:hover { background: rgba(244,239,229,0.03); }
 .roster-row.selected { background: var(--accent-soft); border-left-color: var(--accent); padding-left: 14px; }
 .roster-row .r-num { font-family: var(--font-mono); font-size: 9px; color: var(--dim); }
+.roster-row .r-avatar { display: flex; align-items: center; }
 .roster-row .r-id { font-family: var(--font-mono); font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .roster-row .r-id small { display: block; font-size: 9px; color: var(--muted); font-weight: 400; margin-top: 1px; }
 .roster-row .r-model { color: var(--muted); font-size: 10px; font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .roster-row .r-stat { font-size: 10px; color: var(--muted); font-family: var(--font-mono); }
+.dossier-avatar { position: absolute; top: 0; right: 0; opacity: 0.85; }
 /* Dossier panel */
 .dossier-empty { display: flex; align-items: center; justify-content: center; min-height: 280px; color: var(--dim); font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; }
 .dossier-num { font-family: var(--font-mono); font-size: 9px; color: var(--muted); letter-spacing: 0.26em; text-transform: uppercase; margin-bottom: 6px; }
@@ -1118,7 +1120,7 @@ function switchTab(name) {
     if (ntab) {
       ntab.classList.toggle('active', t === name);
       const arrow = ntab.querySelector('.nav-arrow');
-      if (arrow) (arrow as HTMLElement).style.display = t === name ? '' : 'none';
+      if (arrow) /** @type {HTMLElement} */(arrow).style.display = t === name ? '' : 'none';
     }
   });
   if (name === 'agents') loadAgents();
@@ -1871,7 +1873,7 @@ function renderDefaults(d) {
 function setAgentFilter(f) {
   agentFilter = f;
   document.querySelectorAll('.filter-btn').forEach(b => {
-    b.classList.toggle('active', (b as HTMLElement).dataset.filter === f);
+    b.classList.toggle('active', /** @type {HTMLElement} */(b).dataset.filter === f);
   });
   renderRoster(agentsData.list || []);
 }
@@ -1886,6 +1888,20 @@ function renderAgentCards(list) {
     const a = list.find(x => x.id === selectedAgentId);
     if (a) renderAgentDossier(a, list);
   }
+}
+
+function agentAvatar(id, size) {
+  const palette = ['#8B7355','#6B8E7F','#7B6B8E','#8E7B6B','#6B8E8E','#8E6B7B','#7B8E6B','#8E8E6B'];
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffff;
+  const col = palette[h % palette.length];
+  const initials = id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 2).toUpperCase() || '??';
+  const fs = Math.round(size * 0.36);
+  const r = size / 2;
+  return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" xmlns="http://www.w3.org/2000/svg" style="display:block;flex-shrink:0">'
+    + '<circle cx="' + r + '" cy="' + r + '" r="' + (r - 1) + '" fill="' + col + '22" stroke="' + col + '" stroke-width="1.2"/>'
+    + '<text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-family="monospace" font-size="' + fs + '" font-weight="700" fill="' + col + '" letter-spacing="0.04em">' + initials + '</text>'
+    + '</svg>';
 }
 
 function renderRoster(list) {
@@ -1903,6 +1919,7 @@ function renderRoster(list) {
     const statusLabel = a.default ? 'DEFAULT' : 'IDLE';
     return '<div class="roster-row' + (isSelected ? ' selected' : '') + '" data-aid="' + aid + '" onclick="selectAgent(this.dataset.aid)">'
       + '<div class="r-num">' + String(i + 1).padStart(2, '0') + '</div>'
+      + '<div class="r-avatar">' + agentAvatar(a.id, 22) + '</div>'
       + '<div class="r-id">' + aid + (a.name ? '<small>' + esc(a.name) + '</small>' : '') + '</div>'
       + '<div class="r-model">' + esc(model) + '</div>'
       + '<div class="r-stat">—</div>'
@@ -1916,7 +1933,7 @@ function selectAgent(id) {
   selectedAgentId = id;
   // Update row selection highlight
   document.querySelectorAll('.roster-row').forEach(r => {
-    r.classList.toggle('selected', (r as HTMLElement).dataset.aid === id);
+    r.classList.toggle('selected', /** @type {HTMLElement} */(r).dataset.aid === id);
   });
   const a = (agentsData.list || []).find(x => x.id === id);
   if (a) renderAgentDossier(a, agentsData.list || []);
@@ -1930,17 +1947,20 @@ function renderAgentDossier(a, list) {
   const provider = model.includes('/') ? model.split('/')[0] : '—';
   const tools    = a.tools?.profile  || '—';
   const sandbox  = a.sandbox?.mode   || '—';
-  const timeout  = a.timeoutSeconds  ? a.timeoutSeconds + 's' : (agentsData.defaults as any)?.timeoutSeconds ? (agentsData.defaults as any).timeoutSeconds + 's' : '—';
+  const timeout  = a.timeoutSeconds  ? a.timeoutSeconds + 's' : agentsData.defaults?.timeoutSeconds ? agentsData.defaults.timeoutSeconds + 's' : '—';
   const statusLabel = a.default ? 'DEFAULT' : 'IDLE';
   const statusColor = a.default ? 'var(--accent)' : 'var(--muted)';
   const aid = esc(a.id);
 
   $('agents-dossier').innerHTML =
-    '<div class="dossier-num">AGENT №' + num + '</div>'
+    '<div style="position:relative;padding-right:72px">'
+    + '<div class="dossier-num">AGENT №' + num + '</div>'
     + '<div class="dossier-name">' + aid + '</div>'
     + '<div class="dossier-pill-row">'
     +   '<span class="badge" style="color:' + statusColor + '">' + statusLabel + '</span>'
     +   '<span class="dossier-provider">' + esc(provider) + '</span>'
+    + '</div>'
+    + '<div class="dossier-avatar">' + agentAvatar(a.id, 60) + '</div>'
     + '</div>'
     + (a.personality ? '<div class="dossier-desc">' + esc(a.personality) + '</div>' : '')
     + '<div class="dossier-config-label">MODEL CONFIG</div>'
@@ -2226,7 +2246,7 @@ function renderRoles(roles) {
 function selectRole(id) {
   selectedRoleId = id;
   document.querySelectorAll('#roles-roster .roster-row').forEach(r => {
-    r.classList.toggle('selected', (r as HTMLElement).dataset.rid === id);
+    r.classList.toggle('selected', /** @type {HTMLElement} */(r).dataset.rid === id);
   });
   const role = (teamsData.roles || []).find(r => r.id === id);
   if (role) renderRoleDossier(role, teamsData.roles || []);
@@ -2288,7 +2308,7 @@ function renderTeams(teams, roles) {
 function selectTeam(id) {
   selectedTeamId = id;
   document.querySelectorAll('#teams-roster .roster-row').forEach(r => {
-    r.classList.toggle('selected', (r as HTMLElement).dataset.tid === id);
+    r.classList.toggle('selected', /** @type {HTMLElement} */(r).dataset.tid === id);
   });
   const team = (teamsData.teams || []).find(t => t.id === id);
   const roleMap = {};
