@@ -1879,8 +1879,8 @@ function showApprovalCard(requestId, toolName, input, reason) {
     + (reason ? '<div class="approval-reason">' + esc(reason) + '</div>' : '')
     + '<div class="approval-input">' + esc(inputJson) + '</div>'
     + '<div class="approval-actions">'
-    +   '<button class="btn-approve" onclick="respondApproval(\'' + requestId + '\', true)">✓ Approve</button>'
-    +   '<button class="btn-deny"    onclick="respondApproval(\'' + requestId + '\', false)">✗ Deny</button>'
+    +   '<button class="btn-approve" onclick="respondApproval(\\'' + requestId + '\\', true)">✓ Approve</button>'
+    +   '<button class="btn-deny"    onclick="respondApproval(\\'' + requestId + '\\', false)">✗ Deny</button>'
     + '</div>';
 
   $('chat-messages').appendChild(card);
@@ -3558,8 +3558,8 @@ async function loadConnections() {
         : '<span class="badge red">○&nbsp;stopped</span>';
       const botLabel = c.botUsername ? '@' + esc(c.botUsername) : '—';
       const connBtn  = c.running
-        ? '<button class="btn" style="font-size:10px;color:var(--red)" onclick="disconnectAdapter(\'' + esc(c.id) + '\')">Disconnect</button>'
-        : '<button class="btn btn-primary" style="font-size:10px" onclick="connectAdapter(\'' + esc(c.id) + '\')">Connect</button>';
+        ? '<button class="btn" style="font-size:10px;color:var(--red)" onclick="disconnectAdapter(\\'' + esc(c.id) + '\\')">Disconnect</button>'
+        : '<button class="btn btn-primary" style="font-size:10px" onclick="connectAdapter(\\'' + esc(c.id) + '\\')">Connect</button>';
       return '<tr>'
         + '<td style="font-family:var(--font-mono);font-size:11px">' + esc(c.label) + '</td>'
         + '<td>' + badge(c.platform, 'muted') + '</td>'
@@ -3568,7 +3568,7 @@ async function loadConnections() {
         + '<td>' + runBadge + '</td>'
         + '<td style="display:flex;gap:6px;align-items:center">'
         + connBtn
-        + '<button class="btn" style="font-size:10px;color:var(--red)" onclick="deleteConnection(\'' + esc(c.id) + '\')">✕</button>'
+        + '<button class="btn" style="font-size:10px;color:var(--red)" onclick="deleteConnection(\\'' + esc(c.id) + '\\')">✕</button>'
         + '</td>'
         + '</tr>';
     }).join('');
