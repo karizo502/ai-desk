@@ -28,6 +28,7 @@ import type { ThreatDetector } from '../security/threat-detector.js';
 import type { ModelMessage } from '../models/provider.js';
 import type { AgentConfig, AgentDefaultsSchema } from '../config/schema.js';
 import type { Static } from '@sinclair/typebox';
+import type { MemoryStore } from '../memory/memory-store.js';
 
 type AgentDefaults = Static<typeof AgentDefaultsSchema>;
 
@@ -80,6 +81,7 @@ export class AgentRuntime {
   private defaults: AgentDefaults;
   private agents: Map<string, AgentConfig>;
   private systemPromptProvider: (() => string) | null = null;
+  private memoryStore: MemoryStore | null = null;
   /** agentId → number of concurrently running calls */
   private activeRuns = new Map<string, number>();
 
@@ -94,8 +96,8 @@ export class AgentRuntime {
     threat: ThreatDetector;
     defaults: AgentDefaults;
     agents: AgentConfig[];
-    /** Optional — returns the system prompt, allowing SkillRegistry to inject additions */
     systemPromptProvider?: () => string;
+    memoryStore?: MemoryStore;
   }) {
     this.router = deps.router;
     this.cache = deps.cache;
@@ -108,6 +110,7 @@ export class AgentRuntime {
     this.defaults = deps.defaults;
     this.agents = new Map(deps.agents.map(a => [a.id, a]));
     this.systemPromptProvider = deps.systemPromptProvider ?? null;
+    this.memoryStore = deps.memoryStore ?? null;
   }
 
   /** Update the system prompt provider (called after skill enable/disable) */
@@ -159,11 +162,16 @@ export class AgentRuntime {
     const transcript = (session.transcript as ModelMessage[]) ?? [];
     transcript.push({ role: 'user', content: req.userMessage });
 
-    // 3. Compact if needed
+    // 3. Inject long-term memories (before compaction so they're in context)
     let working = transcript;
+    if (this.memoryStore) {
+      working = await this.compactor.buildMemoryContext(working, req.agentId, req.userMessage);
+    }
+
+    // 4. Compact if needed
     if (this.compactor.shouldCompact(working)) {
       const before = working.length;
-      working = await this.compactor.compact(working);
+      working = await this.compactor.compact(working, undefined, req.agentId, session.id);
       req.onProgress?.({ type: 'compaction', messagesBefore: before, messagesAfter: working.length });
     }
 

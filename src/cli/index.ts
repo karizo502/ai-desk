@@ -44,6 +44,7 @@ import type { TaskDefinition } from '../orchestration/task-graph.js';
 import { MessagingManager } from '../messaging/messaging-manager.js';
 import { SkillRegistry } from '../skills/skill-registry.js';
 import { McpServer } from '../mcp/mcp-server.js';
+import { MemoryStore } from '../memory/memory-store.js';
 import 'dotenv/config';
 
 const __pkgRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -525,10 +526,9 @@ agent
     const budget = new BudgetTracker(dataDir, config.agents.defaults.budget);
     const cache = new ResponseCache(dataDir, masterKey,
       config.cache ?? { enabled: true, backend: 'sqlite', ttlSeconds: 3600 });
-    const compactor = new ContextCompactor(router, config.memory ?? {
-      backend: 'none',
-      compaction: { threshold: 0.6, model: 'anthropic/claude-haiku-3.5' },
-    });
+    const memoryCfg = config.memory ?? { backend: 'none', compaction: { threshold: 0.6, model: 'anthropic/claude-haiku-3.5' } };
+    const memoryStore = memoryCfg.backend === 'sqlite-vec' ? new MemoryStore(dataDir) : undefined;
+    const compactor = new ContextCompactor(router, memoryCfg, memoryStore);
     const registry = new ToolRegistry();
     const executor = new ToolExecutor({
       policy, registry, sandbox, threat,
@@ -547,6 +547,7 @@ agent
       sessions, threat,
       defaults: config.agents.defaults,
       agents: config.agents.list,
+      memoryStore,
     });
 
     console.log(`\n🤖 Running agent "${opts.agent}"...\n`);
@@ -850,10 +851,9 @@ program
     const budget = new BudgetTracker(dataDir, config.agents.defaults.budget);
     const cache = new ResponseCache(dataDir, masterKey,
       config.cache ?? { enabled: true, backend: 'sqlite', ttlSeconds: 3600 });
-    const compactor = new ContextCompactor(router, config.memory ?? {
-      backend: 'none',
-      compaction: { threshold: 0.6, model: 'anthropic/claude-haiku-3.5' },
-    });
+    const memoryCfg2 = config.memory ?? { backend: 'none', compaction: { threshold: 0.6, model: 'anthropic/claude-haiku-3.5' } };
+    const memoryStore2 = memoryCfg2.backend === 'sqlite-vec' ? new MemoryStore(dataDir) : undefined;
+    const compactor = new ContextCompactor(router, memoryCfg2, memoryStore2);
     const toolRegistry = new ToolRegistry();
     const executor = new ToolExecutor({
       policy, registry: toolRegistry, sandbox, threat,
@@ -877,6 +877,7 @@ program
       defaults: config.agents.defaults,
       agents: config.agents.list,
       systemPromptProvider: () => skillRegistry.composedSystemPrompt(),
+      memoryStore: memoryStore2,
     });
 
     const defaultAgent = config.agents.list.find(a => a.default) ?? config.agents.list[0];
@@ -971,10 +972,9 @@ messagingCmd
     const budget = new BudgetTracker(dataDir, config.agents.defaults.budget);
     const cache = new ResponseCache(dataDir, masterKey,
       config.cache ?? { enabled: true, backend: 'sqlite', ttlSeconds: 3600 });
-    const compactor = new ContextCompactor(router, config.memory ?? {
-      backend: 'none',
-      compaction: { threshold: 0.6, model: 'anthropic/claude-haiku-3.5' },
-    });
+    const memoryCfg3 = config.memory ?? { backend: 'none', compaction: { threshold: 0.6, model: 'anthropic/claude-haiku-3.5' } };
+    const memoryStore3 = memoryCfg3.backend === 'sqlite-vec' ? new MemoryStore(dataDir) : undefined;
+    const compactor = new ContextCompactor(router, memoryCfg3, memoryStore3);
     const registry = new ToolRegistry();
     const executor = new ToolExecutor({
       policy, registry, sandbox, threat,
@@ -990,6 +990,7 @@ messagingCmd
       sessions, threat,
       defaults: config.agents.defaults,
       agents: config.agents.list,
+      memoryStore: memoryStore3,
     });
 
     const defaultAgent = config.agents.list.find(a => a.default) ?? config.agents.list[0];
@@ -1162,10 +1163,9 @@ orchestrateCmd
     const budget = new BudgetTracker(dataDir, config.agents.defaults.budget);
     const cache = new ResponseCache(dataDir, masterKey,
       config.cache ?? { enabled: true, backend: 'sqlite', ttlSeconds: 3600 });
-    const compactor = new ContextCompactor(router, config.memory ?? {
-      backend: 'none',
-      compaction: { threshold: 0.6, model: 'anthropic/claude-haiku-3.5' },
-    });
+    const memoryCfg4 = config.memory ?? { backend: 'none', compaction: { threshold: 0.6, model: 'anthropic/claude-haiku-3.5' } };
+    const memoryStore4 = memoryCfg4.backend === 'sqlite-vec' ? new MemoryStore(dataDir) : undefined;
+    const compactor = new ContextCompactor(router, memoryCfg4, memoryStore4);
     const registry = new ToolRegistry();
     const executor = new ToolExecutor({
       policy, registry, sandbox, threat,
@@ -1181,6 +1181,7 @@ orchestrateCmd
       sessions, threat,
       defaults: config.agents.defaults,
       agents: config.agents.list,
+      memoryStore: memoryStore4,
     });
 
     const orchestrator = new Orchestrator(runtime);
@@ -1278,10 +1279,9 @@ teamCmd
     const budget = new BudgetTracker(dataDir, config.agents.defaults.budget);
     const cache = new ResponseCache(dataDir, masterKey,
       config.cache ?? { enabled: true, backend: 'sqlite', ttlSeconds: 3600 });
-    const compactor = new ContextCompactor(router, config.memory ?? {
-      backend: 'none',
-      compaction: { threshold: 0.6, model: 'anthropic/claude-haiku-3.5' },
-    });
+    const memoryCfg5 = config.memory ?? { backend: 'none', compaction: { threshold: 0.6, model: 'anthropic/claude-haiku-3.5' } };
+    const memoryStore5 = memoryCfg5.backend === 'sqlite-vec' ? new MemoryStore(dataDir) : undefined;
+    const compactor = new ContextCompactor(router, memoryCfg5, memoryStore5);
     const registry = new ToolRegistry();
     const executor = new ToolExecutor({
       policy, registry, sandbox, threat,
@@ -1297,6 +1297,7 @@ teamCmd
       sessions, threat,
       defaults: config.agents.defaults,
       agents: config.agents.list,
+      memoryStore: memoryStore5,
     });
 
     const { TeamCoordinator } = await import('../roles/team-coordinator.js');

@@ -67,7 +67,10 @@ export type GatewayEvent =
   | 'team:failed'
   // Dashboard events
   | 'dashboard:client-connected'
-  | 'dashboard:client-disconnected';
+  | 'dashboard:client-disconnected'
+  // Memory events
+  | 'memory:stored'
+  | 'memory:retrieved';
 
 /** Connection metadata */
 export interface ConnectionMeta {
