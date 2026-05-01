@@ -386,6 +386,16 @@ tr:hover td { background: rgba(200,144,72,0.06); }
 .dossier-config-cell-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
 .dossier-config-cell-val { font-family: var(--font-mono); font-size: 13px; color: var(--text); }
 .dossier-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.dossier-skills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+.dossier-skill-pill { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.14em; padding: 3px 8px; border: 1px solid var(--accent); color: var(--accent); border-radius: 2px; text-transform: uppercase; }
+.skill-toggle-btn { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10px; padding: 3px 10px; border-radius: 2px; cursor: pointer; border: 1px solid var(--border); background: var(--bg); color: var(--muted); transition: all 0.15s; }
+.skill-toggle-btn.on { border-color: var(--accent); color: var(--accent); }
+.skill-toggle-btn:hover { opacity: 0.8; }
+.skill-toggle-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.ag-skills-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.ag-skill-check { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); cursor: pointer; padding: 6px 10px; border: 1px solid var(--border); border-radius: 2px; }
+.ag-skill-check:has(input:checked) { border-color: var(--accent); color: var(--accent); }
+.ag-skill-check input { accent-color: var(--accent); }
 /* Role dossier specifics */
 .dossier-resp-list { list-style: none; padding: 0; margin: 0 0 20px 0; display: flex; flex-direction: column; gap: 4px; }
 .dossier-resp-list li { font-size: 11px; color: var(--muted); padding: 7px 12px; border: 1px solid var(--border); border-left: 2px solid var(--accent); font-family: var(--font-mono); line-height: 1.4; }
@@ -1453,6 +1463,11 @@ svg.ws-dag-svg { display: block; }
         </div>
       </div>
 
+      <div class="form-section" id="ag-skills-section" style="display:none">
+        <div class="form-section-title">Skills</div>
+        <div class="ag-skills-grid" id="ag-skills-grid"></div>
+      </div>
+
       <div class="form-check" style="margin-top:14px">
         <input id="ag-default" type="checkbox">
         <label for="ag-default">Set as default agent</label>
@@ -1606,6 +1621,7 @@ let eventCount = 0;
 let reconnectDelay = 1000;
 let es;
 let snapshotAgents = [];
+let snapshotSkills = [];
 
 function connect() {
   if (!authToken) return;
@@ -1764,11 +1780,13 @@ function renderSnapshot(s) {
       + '<td style="color:var(--muted)">' + esc(sk.version || '') + '</td>'
       + '<td>' + badge(sk.enabled ? 'enabled' : 'disabled', sk.enabled ? 'green' : 'muted') + '</td>'
       + '</tr>').join('');
+    snapshotSkills = s.skills;
     const rowsMain = s.skills.map(sk => '<tr>'
       + '<td>' + esc(sk.name) + '</td>'
       + '<td>' + esc(sk.version || '') + '</td>'
       + '<td style="color:var(--muted); font-size:12px">' + esc(sk.description || '') + '</td>'
-      + '<td>' + badge(sk.enabled ? 'enabled' : 'disabled', sk.enabled ? 'green' : 'muted') + '</td>'
+      + '<td><button class="skill-toggle-btn' + (sk.enabled ? ' on' : '') + '" data-skill="' + esc(sk.name) + '" data-enabled="' + sk.enabled + '" onclick="toggleSkill(this.dataset.skill, this.dataset.enabled!==\'true\')">'
+      + '<span class="skill-toggle-dot"></span>' + (sk.enabled ? 'ENABLED' : 'DISABLED') + '</button></td>'
       + '</tr>').join('');
     if (sbStat) sbStat.innerHTML = rowsStat;
     if (sbMain) sbMain.innerHTML = rowsMain;
@@ -2009,6 +2027,17 @@ function chatConnect(token) {
         appendChatNotice('⚠️ ' + (p.message || p.error || 'Server error'));
         $('chat-send-btn').disabled = false;
         $('chat-input').disabled = false;
+        break;
+      }
+      case 'skills:updated': {
+        const skills = msg.payload?.skills || [];
+        snapshotSkills = skills;
+        renderSnapshot({ skills });
+        break;
+      }
+      case 'skill:toggle:error': {
+        const p = msg.payload || {};
+        alert('Skill toggle failed: ' + (p.error || 'unknown error'));
         break;
       }
       default: break;
@@ -2534,6 +2563,25 @@ let agentsData     = { list: [], defaults: {} };
 let selectedAgentId = null;
 let agentFilter    = 'all';
 
+function toggleSkill(name, enable) {
+  if (!chatWs || chatWs.readyState !== WebSocket.OPEN) {
+    alert('Not connected — open the Chat tab first to establish a WebSocket connection');
+    return;
+  }
+  chatWs.send(JSON.stringify({
+    id: crypto.randomUUID(),
+    type: 'skill:toggle',
+    timestamp: Date.now(),
+    payload: { name, enabled: enable },
+  }));
+}
+
+function refreshSkills() {
+  if (snapshotSkills.length > 0) {
+    renderSnapshot({ skills: snapshotSkills });
+  }
+}
+
 async function loadAgents() {
   try {
     const r = await apiFetch('/dashboard/api/agents');
@@ -2584,7 +2632,7 @@ function agentAvatar(id, size, avatarUrl) {
     return '<img src="' + esc(avatarUrl) + '" width="' + s + '" height="' + s + '" '
       + 'data-id="' + esc(id) + '" data-sz="' + s + '" '
       + 'onerror="this.outerHTML=agentAvatar(this.dataset.id,+this.dataset.sz)" '
-      + 'style="display:block;flex-shrink:0;border-radius:50%;object-fit:cover;border:1px solid var(--border)">';
+      + 'style="display:block;flex-shrink:0;border-radius:20%;object-fit:cover;border:1px solid var(--border)">';
   }
   const palette = ['#8B7355','#6B8E7F','#7B6B8E','#8E7B6B','#6B8E8E','#8E6B7B','#7B8E6B','#8E8E6B'];
   let h = 0;
@@ -2593,8 +2641,9 @@ function agentAvatar(id, size, avatarUrl) {
   const initials = id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 2).toUpperCase() || '??';
   const fs = Math.round(s * 0.36);
   const r = s / 2;
+  const rx = Math.round(s * 0.20);
   return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 ' + s + ' ' + s + '" xmlns="http://www.w3.org/2000/svg" style="display:block;flex-shrink:0">'
-    + '<circle cx="' + r + '" cy="' + r + '" r="' + (r - 1) + '" fill="' + col + '22" stroke="' + col + '" stroke-width="1.2"/>'
+    + '<rect x="1" y="1" width="' + (s - 2) + '" height="' + (s - 2) + '" rx="' + rx + '" ry="' + rx + '" fill="' + col + '22" stroke="' + col + '" stroke-width="1.2"/>'
     + '<text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-family="monospace" font-size="' + fs + '" font-weight="700" fill="' + col + '" letter-spacing="0.04em">' + initials + '</text>'
     + '</svg>';
 }
@@ -2648,16 +2697,22 @@ function renderAgentDossier(a, list) {
   const aid = esc(a.id);
 
   $('agents-dossier').innerHTML =
-    '<div style="position:relative;padding-right:72px">'
+    '<div style="position:relative;padding-right:116px">'
     + '<div class="dossier-num">AGENT №' + num + '</div>'
     + '<div class="dossier-name">' + aid + '</div>'
     + '<div class="dossier-pill-row">'
     +   '<span class="badge" style="color:' + statusColor + '">' + statusLabel + '</span>'
     +   '<span class="dossier-provider">' + esc(provider) + '</span>'
     + '</div>'
-    + '<div class="dossier-avatar">' + agentAvatar(a.id, 60, a.avatarUrl) + '</div>'
+    + '<div class="dossier-avatar">' + agentAvatar(a.id, 100, a.avatarUrl) + '</div>'
     + '</div>'
     + (a.personality ? '<div class="dossier-desc">' + esc(a.personality) + '</div>' : '')
+    + (a.skills && a.skills.length > 0
+        ? '<div class="dossier-config-label">SKILLS</div>'
+          + '<div class="dossier-skills">'
+          + a.skills.map(s => '<span class="dossier-skill-pill">' + esc(s) + '</span>').join('')
+          + '</div>'
+        : '')
     + '<div class="dossier-config-label">MODEL CONFIG</div>'
     + '<div class="dossier-config">'
     +   '<div class="dossier-config-cell"><div class="dossier-config-cell-label">MODEL</div><div class="dossier-config-cell-val">' + esc(modelShort) + '</div></div>'
@@ -2770,6 +2825,22 @@ function openAgentModal(agent) {
     $('ag-net').checked           = false;
   }
 
+  // Skills checkboxes
+  const skillsGrid = $('ag-skills-grid');
+  const skillsSection = $('ag-skills-section');
+  if (snapshotSkills.length > 0) {
+    skillsSection.style.display = '';
+    const agentSkills = agent?.skills || [];
+    skillsGrid.innerHTML = snapshotSkills.map(sk =>
+      '<label class="ag-skill-check">'
+      + '<input type="checkbox" name="ag-skill" value="' + esc(sk.name) + '"' + (agentSkills.includes(sk.name) ? ' checked' : '') + '>'
+      + esc(sk.name)
+      + '</label>'
+    ).join('');
+  } else {
+    skillsSection.style.display = 'none';
+  }
+
   showAgMsg('ag-msg', '', '');
   $('agent-modal-bg').classList.add('open');
   setTimeout(() => { if (!agent) $('ag-id').focus(); }, 50);
@@ -2833,6 +2904,9 @@ async function saveAgent() {
   }
 
   if ($('ag-default').checked) body.default = true;
+
+  const checkedSkills = [...document.querySelectorAll('input[name="ag-skill"]:checked')].map(i => i.value);
+  if (checkedSkills.length > 0) body.skills = checkedSkills;
 
   try {
     const isEdit  = !!agentEditId;

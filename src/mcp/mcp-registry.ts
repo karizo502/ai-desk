@@ -106,6 +106,63 @@ export class McpRegistry {
     this.started = false;
   }
 
+  /** Start a single MCP server by name (for live skill enable) */
+  async startOne(name: string, serverCfg: MCPConfig['servers'][string]): Promise<McpServerStatus> {
+    if (this.clients.has(name)) return { name, ready: true, toolCount: 0 };
+
+    const client = new McpClient({ name, command: serverCfg.command, args: serverCfg.args, env: serverCfg.env });
+    client.on('stderr', (line: string) => eventBus.emit('mcp:server-log', { server: name, line }));
+    client.on('exit', ({ code, signal }: { code: number | null; signal: string | null }) => {
+      eventBus.emit('mcp:server-exit', { server: name, code, signal });
+      this.clients.delete(name);
+      for (const [key] of this.tools) {
+        if (key.startsWith(`${name}:`)) this.tools.delete(key);
+      }
+    });
+
+    try {
+      await client.start();
+      const mcpTools = await client.listTools();
+      this.clients.set(name, client);
+      const allowed = serverCfg.capabilities;
+      for (const tool of mcpTools) {
+        if (allowed.length > 0 && !allowed.includes(tool.name)) continue;
+        this.tools.set(`${name}:${tool.name}`, {
+          serverName: name, tool, client,
+          dailyTokenBudget: this.config.security.perServerBudget.dailyTokens,
+        });
+      }
+      eventBus.emit('mcp:server-ready', { server: name, toolCount: mcpTools.length });
+      return { name, ready: true, toolCount: mcpTools.length };
+    } catch (err) {
+      const error = (err as Error).message;
+      eventBus.emit('mcp:server-error', { server: name, error });
+      return { name, ready: false, toolCount: 0, error };
+    }
+  }
+
+  /** Stop a single MCP server by name (for live skill disable) */
+  async stopOne(name: string): Promise<void> {
+    const client = this.clients.get(name);
+    if (!client) return;
+    await client.stop();
+    this.clients.delete(name);
+    for (const [key] of this.tools) {
+      if (key.startsWith(`${name}:`)) this.tools.delete(key);
+    }
+    eventBus.emit('mcp:server-stopped', { server: name });
+  }
+
+  /** Add a server config entry (needed before startOne can reference it) */
+  addServerConfig(name: string, serverCfg: MCPConfig['servers'][string]): void {
+    this.config.servers[name] = serverCfg;
+  }
+
+  /** Remove a server config entry */
+  removeServerConfig(name: string): void {
+    delete this.config.servers[name];
+  }
+
   /** All discovered tool registrations (for injecting into ToolRegistry) */
   getRegisteredTools(): McpRegisteredTool[] {
     return [...this.tools.values()];

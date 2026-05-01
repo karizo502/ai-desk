@@ -40,6 +40,7 @@ export type GatewayEvent =
   | 'mcp:server-exit'
   | 'mcp:server-ready'
   | 'mcp:server-error'
+  | 'mcp:server-stopped'
   // Orchestrator events
   | 'orchestrator:start'
   | 'orchestrator:complete'

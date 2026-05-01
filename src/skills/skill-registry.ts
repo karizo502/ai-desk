@@ -135,6 +135,34 @@ export class SkillRegistry {
     return [...new Set(names)];
   }
 
+  /**
+   * Tool allowlist for a specific agent based on its declared skill names.
+   * Only skills that are both enabled globally AND listed in agentSkills are included.
+   */
+  agentToolAllowlist(agentSkills: string[]): string[] {
+    const names: string[] = [];
+    for (const skillName of agentSkills) {
+      const skill = this.skills.get(skillName);
+      if (!skill || !skill.state.enabled || !skill.definition.toolAllowlist) continue;
+      names.push(...skill.definition.toolAllowlist);
+    }
+    return [...new Set(names)];
+  }
+
+  /**
+   * Composed system prompt for a specific agent based on its declared skill names.
+   * Only skills that are both enabled globally AND listed in agentSkills are included.
+   */
+  agentSystemPrompt(agentSkills: string[]): string {
+    const additions = agentSkills
+      .map(name => this.skills.get(name))
+      .filter((s): s is LoadedSkill => !!s && s.state.enabled && !!s.definition.systemPromptAddition)
+      .map(s => s.definition.systemPromptAddition!.trim());
+
+    if (additions.length === 0) return BASE_SYSTEM_PROMPT;
+    return BASE_SYSTEM_PROMPT + '\n\n' + additions.join('\n\n');
+  }
+
   /** Register a skill definition that was loaded externally (for testing) */
   registerExternal(definition: SkillDefinition, filePath: string): void {
     const existing = this.skills.get(definition.name);

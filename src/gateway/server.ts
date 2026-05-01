@@ -271,15 +271,12 @@ export class GatewayServer {
       this.httpServer.listen(port, bind, async () => {
         // Initialise skill registry (discovers skills/*.skill.json)
         await this.skillRegistry.init();
+        this.applySkillState();
         const enabledSkills = this.skillRegistry.list().filter(s => s.state.enabled);
         if (enabledSkills.length > 0) {
-          // Inject skill-based tool allowlist into policy engine
-          this.policyEngine.setSkillAllowlist(this.skillRegistry.toolAllowlist());
-          // Wire composed system prompt into agent runtime
-          this.agentRuntime.setSystemPromptProvider(() => this.skillRegistry.composedSystemPrompt());
           console.log(`🎯 Skills: ${enabledSkills.length} enabled (${enabledSkills.map(s => s.definition.name).join(', ')})`);
         } else if (this.skillRegistry.list().length > 0) {
-          console.log(`🎯 Skills: ${this.skillRegistry.list().length} available (none enabled — use \`skill enable <name>\`)`);
+          console.log(`🎯 Skills: ${this.skillRegistry.list().length} available (none enabled)`);
         }
 
         // Start MCP servers (config + skill-contributed)
@@ -435,6 +432,102 @@ export class GatewayServer {
   get skillRegistryInstance(): SkillRegistry { return this.skillRegistry; }
   get teamCoordinatorInstance(): TeamCoordinator | null { return this.teamCoordinator; }
 
+  /**
+   * Apply current skill state to policyEngine, agentRuntime, and mcpRegistry.
+   * Called on boot and on every live skill toggle.
+   */
+  private applySkillState(): void {
+    const agents = this.config.agents.list;
+
+    // Global fallback allowlist (for agents with no skills field)
+    this.policyEngine.setSkillAllowlist(this.skillRegistry.toolAllowlist());
+
+    // Per-agent skill allowlist + system prompt
+    for (const agent of agents) {
+      if (agent.skills && agent.skills.length > 0) {
+        this.policyEngine.setAgentSkillAllowlist(
+          agent.id,
+          this.skillRegistry.agentToolAllowlist(agent.skills),
+        );
+      } else {
+        this.policyEngine.clearAgentSkillAllowlist(agent.id);
+      }
+    }
+
+    // System prompt provider: per-agent if skills defined, global otherwise
+    this.agentRuntime.setSystemPromptProvider((agentId: string) => {
+      const agent = agents.find(a => a.id === agentId);
+      if (agent?.skills && agent.skills.length > 0) {
+        return this.skillRegistry.agentSystemPrompt(agent.skills);
+      }
+      return this.skillRegistry.composedSystemPrompt();
+    });
+  }
+
+  /**
+   * Live toggle a skill on/off without restarting the gateway.
+   * Updates policy, prompts, and MCP servers immediately.
+   */
+  private async handleSkillToggle(connectionId: string, msg: { name: string; enabled: boolean }): Promise<void> {
+    const conn = this.connections.get(connectionId);
+    if (!conn) return;
+
+    const { name, enabled } = msg;
+    const ok = enabled ? this.skillRegistry.enable(name) : this.skillRegistry.disable(name);
+    if (!ok) {
+      conn.ws.send(JSON.stringify(createMessage('skill:toggle:error', { name, error: `Skill "${name}" not found` })));
+      return;
+    }
+
+    // Apply new state to policy engine and agent runtime immediately
+    this.applySkillState();
+
+    // Handle MCP server lifecycle
+    const skill = this.skillRegistry.get(name);
+    if (skill?.definition.mcpServer) {
+      const serverKey = `skill:${name}`;
+      if (enabled) {
+        if (!this.mcpRegistry) {
+          const security = this.config.mcp?.security ?? {
+            sandboxAll: true, denyCapabilities: [], perServerBudget: { dailyTokens: 50_000 },
+          };
+          this.mcpRegistry = new McpRegistry({ servers: {}, security }, this.budgetTracker);
+        }
+        const mcpCfg = {
+          command: skill.definition.mcpServer.command,
+          args: skill.definition.mcpServer.args ?? [],
+          env: skill.definition.mcpServer.env,
+          capabilities: skill.definition.mcpServer.capabilities,
+          sandbox: skill.definition.mcpServer.sandbox,
+        };
+        this.mcpRegistry.addServerConfig(serverKey, mcpCfg);
+        const status = await this.mcpRegistry.startOne(serverKey, mcpCfg);
+        if (status.ready) {
+          const adapter = new McpToolAdapter(this.toolRegistry, this.mcpRegistry);
+          adapter.registerAll();
+        }
+      } else {
+        await this.mcpRegistry?.stopOne(serverKey);
+        this.mcpRegistry?.removeServerConfig(serverKey);
+      }
+    }
+
+    // Broadcast updated skill list to all authenticated connections
+    const skills = this.skillRegistry.list().map(s => ({
+      name: s.definition.name,
+      version: s.definition.version,
+      enabled: s.state.enabled,
+      description: s.definition.description,
+      tags: s.definition.tags ?? [],
+      hasMcp: !!s.definition.mcpServer,
+    }));
+    const update = JSON.stringify(createMessage('skills:updated', { skills }));
+    for (const c of this.connections.values()) {
+      if (c.meta.authenticatedAt) c.ws.send(update);
+    }
+    console.log(`🎯 Skill "${name}" ${enabled ? 'enabled' : 'disabled'} (live)`);
+  }
+
   /** Handle new WebSocket connection */
   private handleConnection(ws: WebSocket, req: IncomingMessage): void {
     const remoteAddress = req.socket.remoteAddress ?? 'unknown';
@@ -558,6 +651,9 @@ export class GatewayServer {
         break;
       case 'orchestrate:run':
         this.handleOrchestrateRun(connectionId, msg);
+        break;
+      case 'skill:toggle':
+        this.handleSkillToggle(connectionId, (msg as unknown) as { name: string; enabled: boolean });
         break;
       default:
         conn.ws.send(JSON.stringify(createMessage('error', {

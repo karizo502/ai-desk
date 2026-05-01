@@ -127,6 +127,12 @@ export const AgentConfigSchema = Type.Object({
    * Agents without this flag always fall back to dashboard (WebSocket) approval.
    */
   telegramApproval: Type.Optional(Type.Boolean()),
+  /**
+   * Skill names to enable for this agent (must match names in skills/*.skill.json).
+   * Only these skills' toolAllowlist and systemPromptAddition will apply to this agent.
+   * If omitted, the agent inherits no skill-based permissions beyond its tool policy.
+   */
+  skills: Type.Optional(Type.Array(Type.String())),
 });
 export type AgentConfig = Static<typeof AgentConfigSchema>;
 

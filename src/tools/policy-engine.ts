@@ -40,8 +40,10 @@ interface PolicyOverride {
 export class PolicyEngine {
   private config: ToolPolicyConfig;
   private overrides = new Map<string, PolicyOverride>();
-  /** Skill-injected tool names; checked alongside config.allow */
+  /** Global skill allowlist (fallback for agents with no skills field) */
   private skillAllowlist: Set<string> = new Set();
+  /** Per-agent skill allowlist: agentId → Set of tool names */
+  private agentSkillAllowlists = new Map<string, Set<string>>();
 
   constructor(config: ToolPolicyConfig) {
     this.config = config;
@@ -52,9 +54,19 @@ export class PolicyEngine {
     for (const name of toolNames) this.skillAllowlist.add(name);
   }
 
-  /** Replace skill allowlist (call after skill enable/disable) */
+  /** Replace global skill allowlist (call after skill enable/disable) */
   setSkillAllowlist(toolNames: string[]): void {
     this.skillAllowlist = new Set(toolNames);
+  }
+
+  /** Set skill allowlist for a specific agent (overrides global for that agent) */
+  setAgentSkillAllowlist(agentId: string, toolNames: string[]): void {
+    this.agentSkillAllowlists.set(agentId, new Set(toolNames));
+  }
+
+  /** Clear per-agent allowlist (e.g. agent removed) */
+  clearAgentSkillAllowlist(agentId: string): void {
+    this.agentSkillAllowlists.delete(agentId);
   }
 
   /**
@@ -89,9 +101,12 @@ export class PolicyEngine {
       };
     }
 
-    // 3. Check per-tool allow list + skill allowlist
+    // 3. Check per-tool allow list + skill allowlist (per-agent takes priority over global)
+    const effectiveSkillAllowlist = agentId && this.agentSkillAllowlists.has(agentId)
+      ? this.agentSkillAllowlists.get(agentId)!
+      : this.skillAllowlist;
     if (this.config.allow?.some(pattern => this.matchTool(name, pattern)) ||
-        this.skillAllowlist.has(name)) {
+        effectiveSkillAllowlist.has(name)) {
       return {
         allowed: true,
         reason: `Tool "${name}" is explicitly allowed`,

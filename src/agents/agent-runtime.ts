@@ -85,7 +85,7 @@ export class AgentRuntime {
   private threat: ThreatDetector;
   private defaults: AgentDefaults;
   private agents: Map<string, AgentConfig>;
-  private systemPromptProvider: (() => string) | null = null;
+  private systemPromptProvider: ((agentId: string) => string) | null = null;
   private memoryStore: MemoryStore | null = null;
   /** agentId → number of concurrently running calls */
   private activeRuns = new Map<string, number>();
@@ -101,7 +101,7 @@ export class AgentRuntime {
     threat: ThreatDetector;
     defaults: AgentDefaults;
     agents: AgentConfig[];
-    systemPromptProvider?: () => string;
+    systemPromptProvider?: (agentId: string) => string;
     memoryStore?: MemoryStore;
   }) {
     this.router = deps.router;
@@ -119,7 +119,7 @@ export class AgentRuntime {
   }
 
   /** Update the system prompt provider (called after skill enable/disable) */
-  setSystemPromptProvider(provider: () => string): void {
+  setSystemPromptProvider(provider: (agentId: string) => string): void {
     this.systemPromptProvider = provider;
   }
 
@@ -187,7 +187,7 @@ export class AgentRuntime {
 
     // Tools available based on policy
     const tools = this.executor.visibleTools();
-    const basePrompt = this.systemPromptProvider ? this.systemPromptProvider() : DEFAULT_SYSTEM_PROMPT;
+    const basePrompt = this.systemPromptProvider ? this.systemPromptProvider(req.agentId) : DEFAULT_SYSTEM_PROMPT;
     const sysPrompt = agentCfg.personality ? agentCfg.personality + '\n\n' + basePrompt : basePrompt;
 
     let totalInput = 0;

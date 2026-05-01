@@ -33,7 +33,11 @@ export type ProtocolMessageType =
   | 'system:audit'
   // Orchestration (Phase 3)
   | 'orchestrate:run'
-  | 'orchestrate:result';
+  | 'orchestrate:result'
+  // Skills
+  | 'skill:toggle'
+  | 'skill:toggle:error'
+  | 'skills:updated';
 
 /** Base protocol message */
 export interface ProtocolMessage {
