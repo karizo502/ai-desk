@@ -292,6 +292,34 @@ tr:hover td { background: rgba(200,144,72,0.06); }
 .approval-actions .btn-deny { background: #4a2020; color: #cf6f6f; border: 1px solid #7a4040; padding: 7px 20px; border-radius: 8px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; cursor: pointer; letter-spacing: 0.1em; transition: background 0.1s; }
 .approval-actions .btn-deny:hover { background: #6a2a2a; }
 
+/* ── Notification Bell ──────────────────────────────────── */
+.notif-bell-btn { position: relative; background: none; border: none; cursor: pointer; padding: 6px 8px; color: var(--muted); transition: color 0.15s; display: flex; align-items: center; border-radius: 6px; }
+.notif-bell-btn:hover { color: var(--text); background: var(--bg-card); }
+.notif-bell-btn.has-pending { color: var(--accent); }
+.notif-badge { position: absolute; top: 1px; right: 1px; background: var(--red); color: #fff; font-family: var(--font-mono); font-size: 9px; font-weight: 700; min-width: 16px; height: 16px; border-radius: 8px; display: none; align-items: center; justify-content: center; padding: 0 3px; line-height: 1; pointer-events: none; }
+.notif-panel { position: fixed; top: 56px; right: 16px; width: 380px; max-height: 560px; overflow-y: auto; background: var(--bg-sidebar); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.35); z-index: 500; display: none; flex-direction: column; }
+.notif-panel.open { display: flex; }
+.notif-panel-hdr { padding: 12px 16px; border-bottom: 1px solid var(--border); font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.notif-panel-close { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 18px; line-height: 1; padding: 0 4px; }
+.notif-panel-close:hover { color: var(--text); }
+.notif-panel-empty { padding: 32px 16px; text-align: center; font-family: var(--font-mono); font-size: 10px; color: var(--dim); letter-spacing: 0.2em; }
+.notif-item { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; background: var(--bg-card); }
+.notif-item:last-child { border-bottom: none; }
+.notif-item-hdr { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.notif-item-tool { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--text); }
+.notif-item-cd { font-family: var(--font-mono); font-size: 10px; color: var(--muted); flex-shrink: 0; }
+.notif-item-cd.urgent { color: var(--red); }
+.notif-item-reason { font-size: 11px; color: var(--muted); font-style: italic; line-height: 1.4; }
+.notif-item-actions { display: flex; gap: 6px; }
+.notif-item-actions .btn-approve { background: #2a4a2a; color: #6fcf6f; border: 1px solid #4a7a4a; padding: 5px 16px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer; letter-spacing: 0.06em; }
+.notif-item-actions .btn-approve:hover { background: #3a6a3a; }
+.notif-item-actions .btn-deny { background: #4a2020; color: #cf6f6f; border: 1px solid #7a4040; padding: 5px 16px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer; letter-spacing: 0.06em; }
+.notif-item-actions .btn-deny:hover { background: #6a2a2a; }
+@keyframes bellShake { 0%,100%{transform:rotate(0)} 15%{transform:rotate(12deg)} 30%{transform:rotate(-10deg)} 45%{transform:rotate(7deg)} 60%{transform:rotate(-5deg)} 75%{transform:rotate(3deg)} }
+.notif-bell-btn.shake { animation: bellShake 0.5s ease; }
+@keyframes notifToast { 0%{opacity:0;transform:translateY(-8px)} 10%{opacity:1;transform:translateY(0)} 80%{opacity:1} 100%{opacity:0;transform:translateY(-8px)} }
+.notif-toast { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); background: #2d2010; border: 1px solid var(--accent); border-radius: 8px; padding: 10px 18px; font-family: var(--font-mono); font-size: 11px; color: var(--accent); letter-spacing: 0.08em; z-index: 600; pointer-events: none; animation: notifToast 3s ease forwards; white-space: nowrap; }
+
 /* ── Budget Progress Bars ───────────────────────────────── */
 .budget-bar-row { margin-bottom: 22px; }
 .budget-bar-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
@@ -536,6 +564,10 @@ svg.ws-dag-svg { display: block; }
       <div class="stat-item">CONNECTIONS <span id="conn-cnt">—</span></div>
       <div class="stat-item">PROVIDERS <span id="providers">—</span></div>
       <div id="conn-status" style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em">CONNECTING…</div>
+      <button class="notif-bell-btn" id="notif-bell" onclick="toggleNotifPanel()" title="Pending Approvals">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <span class="notif-badge" id="notif-badge">0</span>
+      </button>
       <div id="dot" style="width:7px;height:7px;border-radius:999px;background:var(--green);box-shadow:0 0 8px rgba(125,220,107,.7)"></div>
     </div>
   </div>
@@ -1810,6 +1842,7 @@ let chatConnected = false;
 let streamingMsgEl = null;  // current streaming bubble element
 let streamingContent = '';
 const approvalTimers = new Map(); // requestId → intervalId
+const pendingNotifications = new Map(); // requestId → { toolName, reason, input }
 
 function populateChatAgents(agents) {
   const sel = $('chat-agent');
@@ -2030,42 +2063,139 @@ function appendChatNotice(text) {
   scrollChatToBottom();
 }
 
+function updateBell() {
+  const count = pendingNotifications.size;
+  const bell  = $('notif-bell');
+  const badge = $('notif-badge');
+  if (!bell || !badge) return;
+  badge.textContent = String(count);
+  badge.style.display = count > 0 ? 'flex' : 'none';
+  bell.classList.toggle('has-pending', count > 0);
+  // Re-render panel if open
+  const panel = $('notif-panel');
+  if (panel && panel.classList.contains('open')) renderNotifPanel();
+}
+
+function toggleNotifPanel() {
+  const panel = $('notif-panel');
+  if (!panel) return;
+  const willOpen = !panel.classList.contains('open');
+  panel.classList.toggle('open', willOpen);
+  if (willOpen) renderNotifPanel();
+}
+
+function renderNotifPanel() {
+  const body = $('notif-panel-body');
+  if (!body) return;
+  body.innerHTML = '';
+  if (pendingNotifications.size === 0) {
+    body.innerHTML = '<div class="notif-panel-empty">NO PENDING REQUESTS</div>';
+    return;
+  }
+  pendingNotifications.forEach((data, rid) => {
+    const item = document.createElement('div');
+    item.className = 'notif-item';
+    item.id = 'nitem-' + rid;
+    item.innerHTML =
+      '<div class="notif-item-hdr">'
+      + '<span class="notif-item-tool">' + esc(data.toolName) + '</span>'
+      + '<span class="notif-item-cd" id="nicd-' + rid + '">…</span>'
+      + '</div>'
+      + (data.reason ? '<div class="notif-item-reason">' + esc(data.reason) + '</div>' : '')
+      + '<div class="notif-item-actions">'
+      + '<button class="btn-approve" onclick="respondApproval(\\'' + rid + '\\', true)">✓ Approve</button>'
+      + '<button class="btn-deny"    onclick="respondApproval(\\'' + rid + '\\', false)">✗ Deny</button>'
+      + '</div>';
+    body.appendChild(item);
+  });
+}
+
+function showNotifToast(toolName) {
+  const toast = document.createElement('div');
+  toast.className = 'notif-toast';
+  toast.textContent = '⚠ Permission request: ' + toolName;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3100);
+}
+
+// Close notification panel when clicking outside it
+document.addEventListener('click', function(e) {
+  const panel = $('notif-panel');
+  const bell  = $('notif-bell');
+  if (!panel || !panel.classList.contains('open')) return;
+  if (!panel.contains(e.target) && !bell.contains(e.target)) {
+    panel.classList.remove('open');
+  }
+});
+
 function showApprovalCard(requestId, toolName, input, reason) {
   const TIMEOUT_S = 60;
   let remaining = TIMEOUT_S;
 
-  const card = document.createElement('div');
-  card.className = 'approval-card';
-  card.dataset.rid = requestId;
+  // Track in notification system
+  pendingNotifications.set(requestId, { toolName, reason, input });
+  updateBell();
 
-  const inputJson = JSON.stringify(input || {}, null, 2);
+  // Shake bell animation
+  const bell = $('notif-bell');
+  if (bell) {
+    bell.classList.remove('shake');
+    void bell.offsetWidth; // reflow to restart animation
+    bell.classList.add('shake');
+    setTimeout(() => bell.classList.remove('shake'), 600);
+  }
 
-  card.innerHTML =
-    '<div class="approval-header">'
-    + '<span class="approval-title">⚠ Tool Approval Required</span>'
-    + '<span class="approval-countdown" id="acd-' + requestId + '">' + TIMEOUT_S + 's</span>'
-    + '</div>'
-    + '<div class="approval-tool">' + esc(toolName) + '</div>'
-    + (reason ? '<div class="approval-reason">' + esc(reason) + '</div>' : '')
-    + '<div class="approval-input">' + esc(inputJson) + '</div>'
-    + '<div class="approval-actions">'
-    +   '<button class="btn-approve" onclick="respondApproval(\\'' + requestId + '\\', true)">✓ Approve</button>'
-    +   '<button class="btn-deny"    onclick="respondApproval(\\'' + requestId + '\\', false)">✗ Deny</button>'
-    + '</div>';
+  // Show toast if user is not on the Chat tab
+  const chatTab = $('tab-chat');
+  if (!chatTab || !chatTab.classList.contains('active')) {
+    showNotifToast(toolName);
+  }
 
-  $('chat-messages').appendChild(card);
-  scrollChatToBottom();
+  // Show card in chat messages if chat tab is available
+  const chatMessages = $('chat-messages');
+  if (chatMessages) {
+    const card = document.createElement('div');
+    card.className = 'approval-card';
+    card.dataset.rid = requestId;
+
+    const inputJson = JSON.stringify(input || {}, null, 2);
+
+    card.innerHTML =
+      '<div class="approval-header">'
+      + '<span class="approval-title">⚠ Tool Approval Required</span>'
+      + '<span class="approval-countdown" id="acd-' + requestId + '">' + TIMEOUT_S + 's</span>'
+      + '</div>'
+      + '<div class="approval-tool">' + esc(toolName) + '</div>'
+      + (reason ? '<div class="approval-reason">' + esc(reason) + '</div>' : '')
+      + '<div class="approval-input">' + esc(inputJson) + '</div>'
+      + '<div class="approval-actions">'
+      +   '<button class="btn-approve" onclick="respondApproval(\\'' + requestId + '\\', true)">✓ Approve</button>'
+      +   '<button class="btn-deny"    onclick="respondApproval(\\'' + requestId + '\\', false)">✗ Deny</button>'
+      + '</div>';
+
+    chatMessages.appendChild(card);
+    scrollChatToBottom();
+  }
 
   const interval = setInterval(() => {
     remaining--;
-    const el = document.getElementById('acd-' + requestId);
-    if (el) {
-      el.textContent = remaining + 's';
-      if (remaining <= 10) el.classList.add('urgent');
+    // Update countdown in chat card
+    const chatEl = document.getElementById('acd-' + requestId);
+    if (chatEl) {
+      chatEl.textContent = remaining + 's';
+      if (remaining <= 10) chatEl.classList.add('urgent');
+    }
+    // Update countdown in notification panel
+    const notifEl = document.getElementById('nicd-' + requestId);
+    if (notifEl) {
+      notifEl.textContent = remaining + 's';
+      if (remaining <= 10) notifEl.classList.add('urgent');
     }
     if (remaining <= 0) {
       clearInterval(interval);
       approvalTimers.delete(requestId);
+      pendingNotifications.delete(requestId);
+      updateBell();
       dismissApprovalCard(requestId);
       appendChatNotice('⏱ Tool approval timed out — ' + toolName + ' denied');
     }
@@ -2077,6 +2207,14 @@ function showApprovalCard(requestId, toolName, input, reason) {
 function respondApproval(requestId, approved) {
   const timer = approvalTimers.get(requestId);
   if (timer) { clearInterval(timer); approvalTimers.delete(requestId); }
+
+  // Remove from pending notifications and update bell
+  pendingNotifications.delete(requestId);
+  updateBell();
+
+  // Close notification panel after responding
+  const panel = $('notif-panel');
+  if (panel && pendingNotifications.size === 0) panel.classList.remove('open');
 
   if (chatWs && chatWs.readyState === WebSocket.OPEN) {
     chatWs.send(JSON.stringify({
@@ -2092,8 +2230,14 @@ function respondApproval(requestId, approved) {
 }
 
 function dismissApprovalCard(requestId) {
-  const card = $('chat-messages').querySelector('[data-rid="' + requestId + '"]');
-  if (card) card.remove();
+  const chatMessages = $('chat-messages');
+  if (chatMessages) {
+    const card = chatMessages.querySelector('[data-rid="' + requestId + '"]');
+    if (card) card.remove();
+  }
+  // Remove notification item from panel
+  const nitem = document.getElementById('nitem-' + requestId);
+  if (nitem) nitem.remove();
 }
 
 function scrollChatToBottom() {
@@ -4219,6 +4363,18 @@ function renderWsTasks(tasks, teams) {
   el.innerHTML = html;
 }
 </script>
+
+<!-- Notification Panel (floating, fixed position) -->
+<div class="notif-panel" id="notif-panel">
+  <div class="notif-panel-hdr">
+    <span>PENDING APPROVALS</span>
+    <button class="notif-panel-close" onclick="toggleNotifPanel()">×</button>
+  </div>
+  <div id="notif-panel-body">
+    <div class="notif-panel-empty">NO PENDING REQUESTS</div>
+  </div>
+</div>
+
 </body>
 </html>`;
 }

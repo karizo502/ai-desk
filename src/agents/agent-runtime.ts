@@ -323,6 +323,28 @@ export class AgentRuntime {
       // 8. Persist
       this.sessions.update(session.id, { transcript: working });
 
+      // If the agent ran steps but produced no text content, it likely got stuck
+      // in a tool-call loop and never returned a usable text response.
+      if (steps > 0 && !lastAssistantContent.trim()) {
+        return {
+          success: false,
+          content: '',
+          sessionId: session.id,
+          agentId: req.agentId,
+          steps,
+          cached,
+          model: modelUsed,
+          tokensUsed: {
+            input: totalInput,
+            output: totalOutput,
+            total: totalInput + totalOutput,
+            cost: totalCost,
+          },
+          durationMs: Date.now() - start,
+          error: `Agent completed ${steps} step(s) without producing a text response (likely stuck in tool-call loop)`,
+        };
+      }
+
       return {
         success: true,
         content: lastAssistantContent,

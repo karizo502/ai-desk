@@ -103,7 +103,19 @@ export class TeamCoordinator {
     // Parse the JSON task list
     let tasks: TaskDefinition[];
     try {
-      const cleaned = decompositionResult.content.trim().replace(/^```json\n?|^```\n?|\n?```$/g, '');
+      if (!decompositionResult.content.trim()) {
+        throw new Error('model returned empty response — agent produced no text content');
+      }
+      // Strip markdown code fences (handles both \n and \r\n)
+      let cleaned = decompositionResult.content.trim()
+        .replace(/^```(?:json)?\r?\n?/, '')
+        .replace(/\r?\n?```\s*$/, '')
+        .trim();
+      // If the model added surrounding explanation, try to extract the JSON array
+      if (!cleaned.startsWith('[')) {
+        const match = cleaned.match(/\[[\s\S]*\]/);
+        if (match) cleaned = match[0];
+      }
       tasks = JSON.parse(cleaned) as TaskDefinition[];
       if (!Array.isArray(tasks) || tasks.length === 0) throw new Error('empty task array');
     } catch (err) {

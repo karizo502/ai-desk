@@ -137,9 +137,6 @@ export class ToolExecutor {
           durationMs: Date.now() - start,
         };
       }
-
-      // Grant a session-scoped override so subsequent identical calls don't re-prompt
-      this.policy.grantOverride(req.sessionId, req.call.name, 'user');
     }
 
     // Execute (sandbox enforcement is the sandbox manager's job; we just hand context)
