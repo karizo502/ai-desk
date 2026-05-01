@@ -1785,7 +1785,7 @@ function renderSnapshot(s) {
       + '<td>' + esc(sk.name) + '</td>'
       + '<td>' + esc(sk.version || '') + '</td>'
       + '<td style="color:var(--muted); font-size:12px">' + esc(sk.description || '') + '</td>'
-      + '<td><button class="skill-toggle-btn' + (sk.enabled ? ' on' : '') + '" data-skill="' + esc(sk.name) + '" data-enabled="' + sk.enabled + '" onclick="toggleSkill(this.dataset.skill, this.dataset.enabled!==\'true\')">'
+      + '<td><button class="skill-toggle-btn' + (sk.enabled ? ' on' : '') + '" data-skill="' + esc(sk.name) + '" data-enabled="' + sk.enabled + '" onclick="toggleSkill(this.dataset.skill, this.dataset.enabled!==&apos;true&apos;)">'
       + '<span class="skill-toggle-dot"></span>' + (sk.enabled ? 'ENABLED' : 'DISABLED') + '</button></td>'
       + '</tr>').join('');
     if (sbStat) sbStat.innerHTML = rowsStat;
