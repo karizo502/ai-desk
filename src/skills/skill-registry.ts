@@ -64,21 +64,21 @@ export class SkillRegistry {
     return this.skills.get(name);
   }
 
-  enable(name: string): boolean {
+  enable(name: string, actor?: { connectionId?: string; remoteAddress?: string }): boolean {
     const skill = this.skills.get(name);
     if (!skill) return false;
     skill.state.enabled = true;
     this.saveState();
-    eventBus.emit('skills:enabled', { name });
+    eventBus.emit('skills:enabled', { name, ...(actor ?? {}) });
     return true;
   }
 
-  disable(name: string): boolean {
+  disable(name: string, actor?: { connectionId?: string; remoteAddress?: string }): boolean {
     const skill = this.skills.get(name);
     if (!skill) return false;
     skill.state.enabled = false;
     this.saveState();
-    eventBus.emit('skills:disabled', { name });
+    eventBus.emit('skills:disabled', { name, ...(actor ?? {}) });
     return true;
   }
 

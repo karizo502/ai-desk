@@ -47,6 +47,11 @@ export class ToolRegistry {
     this.tools.set(tool.definition.name, tool);
   }
 
+  /** Remove a tool registration (used when an MCP server stops via skill disable) */
+  unregister(name: string): boolean {
+    return this.tools.delete(name);
+  }
+
   get(name: string): RegisteredTool | undefined {
     return this.tools.get(name);
   }

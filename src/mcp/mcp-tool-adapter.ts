@@ -43,6 +43,24 @@ export class McpToolAdapter {
     return this.registeredNames;
   }
 
+  /**
+   * Unregister tools whose name prefix matches the given MCP server name.
+   * Call when stopping an MCP server (e.g. live skill disable).
+   */
+  unregisterAllForServer(serverName: string): number {
+    const sanitised = serverName.replace(/[^a-z0-9]/gi, '_');
+    const prefix = `mcp_${sanitised}_`;
+    let removed = 0;
+    this.registeredNames = this.registeredNames.filter(n => {
+      if (n.startsWith(prefix)) {
+        if (this.toolRegistry.unregister(n)) removed++;
+        return false;
+      }
+      return true;
+    });
+    return removed;
+  }
+
   private toolName(mcpTool: McpRegisteredTool): string {
     // Sanitise server/tool names to valid identifier characters
     const server = mcpTool.serverName.replace(/[^a-z0-9]/gi, '_');

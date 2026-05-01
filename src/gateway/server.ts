@@ -91,6 +91,8 @@ export class GatewayServer {
   private startTime = Date.now();
   private rateLimitMap = new Map<string, { count: number; resetAt: number }>();
   private pendingApprovals = new Map<string, PendingApproval>();
+  /** Per-skill mutex: serialise concurrent skill:toggle requests for the same skill */
+  private skillToggleLocks = new Map<string, Promise<void>>();
   private cachePurgeInterval: ReturnType<typeof setInterval>;
 
   private configPath: string;
@@ -208,9 +210,17 @@ export class GatewayServer {
         onAgentReload: (list, defaults) => {
           // Hot-reload: merge partial defaults over the full current defaults
           const merged = { ...this.config.agents.defaults, ...defaults } as typeof this.config.agents.defaults;
+          // Compute set of removed agent IDs so we can clear stale skill allowlists
+          const oldIds = new Set(this.config.agents.list.map(a => a.id));
+          const newIds = new Set(list.map(a => a.id));
+          for (const id of oldIds) {
+            if (!newIds.has(id)) this.policyEngine.clearAgentSkillAllowlist(id);
+          }
           this.agentRuntime.reloadAgents(list, merged);
           this.config.agents.list     = list;
           this.config.agents.defaults = merged;
+          // Re-apply skill state so new/edited agents get their per-agent allowlists
+          this.applySkillState();
           console.log(`🔄 Agents hot-reloaded: ${list.length} agent(s)`);
         },
         auditLog: this.auditLog,
@@ -468,12 +478,55 @@ export class GatewayServer {
    * Live toggle a skill on/off without restarting the gateway.
    * Updates policy, prompts, and MCP servers immediately.
    */
-  private async handleSkillToggle(connectionId: string, msg: { name: string; enabled: boolean }): Promise<void> {
+  private async handleSkillToggle(connectionId: string, msg: unknown): Promise<void> {
     const conn = this.connections.get(connectionId);
     if (!conn) return;
 
-    const { name, enabled } = msg;
-    const ok = enabled ? this.skillRegistry.enable(name) : this.skillRegistry.disable(name);
+    // Strict input validation — reject if shape is wrong
+    if (!msg || typeof msg !== 'object') {
+      conn.ws.send(JSON.stringify(createMessage('skill:toggle:error', { name: '', error: 'Invalid payload' })));
+      return;
+    }
+    const payload = msg as { name?: unknown; enabled?: unknown };
+    if (typeof payload.name !== 'string' || typeof payload.enabled !== 'boolean') {
+      conn.ws.send(JSON.stringify(createMessage('skill:toggle:error', {
+        name: typeof payload.name === 'string' ? payload.name : '',
+        error: 'Payload must have { name: string, enabled: boolean }',
+      })));
+      return;
+    }
+    const name: string = payload.name;
+    const enabled: boolean = payload.enabled;
+
+    // Per-skill mutex: chain onto any in-flight toggle for the same skill
+    const prev = this.skillToggleLocks.get(name) ?? Promise.resolve();
+    const run = prev.then(() => this.runSkillToggle(connectionId, name, enabled));
+    this.skillToggleLocks.set(name, run.catch(() => undefined));
+    try {
+      await run;
+    } finally {
+      // Clear lock if no newer toggle has chained on
+      if (this.skillToggleLocks.get(name) === run.catch(() => undefined)) {
+        this.skillToggleLocks.delete(name);
+      }
+    }
+  }
+
+  private async runSkillToggle(connectionId: string, name: string, enabled: boolean): Promise<void> {
+    const conn = this.connections.get(connectionId);
+    if (!conn) return;
+
+    // Skip if already in desired state (idempotent)
+    const current = this.skillRegistry.get(name);
+    if (current && current.state.enabled === enabled) {
+      conn.ws.send(JSON.stringify(createMessage('skill:toggle:error', {
+        name, error: `Skill already ${enabled ? 'enabled' : 'disabled'}`,
+      })));
+      return;
+    }
+
+    const actor = { connectionId, remoteAddress: conn.meta.remoteAddress };
+    const ok = enabled ? this.skillRegistry.enable(name, actor) : this.skillRegistry.disable(name, actor);
     if (!ok) {
       conn.ws.send(JSON.stringify(createMessage('skill:toggle:error', { name, error: `Skill "${name}" not found` })));
       return;
@@ -503,12 +556,12 @@ export class GatewayServer {
         this.mcpRegistry.addServerConfig(serverKey, mcpCfg);
         const status = await this.mcpRegistry.startOne(serverKey, mcpCfg);
         if (status.ready) {
-          const adapter = new McpToolAdapter(this.toolRegistry, this.mcpRegistry);
-          adapter.registerAll();
+          this.getMcpAdapter().registerAll();
         }
       } else {
         await this.mcpRegistry?.stopOne(serverKey);
         this.mcpRegistry?.removeServerConfig(serverKey);
+        if (this.mcpAdapter) this.mcpAdapter.unregisterAllForServer(serverKey);
       }
     }
 
@@ -525,7 +578,18 @@ export class GatewayServer {
     for (const c of this.connections.values()) {
       if (c.meta.authenticatedAt) c.ws.send(update);
     }
-    console.log(`🎯 Skill "${name}" ${enabled ? 'enabled' : 'disabled'} (live)`);
+    // Sanitised log — name comes from registry lookup so already validated kebab-case
+    console.log(`🎯 Skill "${name}" ${enabled ? 'enabled' : 'disabled'} (live, by ${conn.meta.remoteAddress})`);
+  }
+
+  /** Lazy-initialise & cache the MCP tool adapter (idempotent registerAll) */
+  private mcpAdapter: McpToolAdapter | null = null;
+  private getMcpAdapter(): McpToolAdapter {
+    if (!this.mcpRegistry) throw new Error('MCP registry not initialised');
+    if (!this.mcpAdapter) {
+      this.mcpAdapter = new McpToolAdapter(this.toolRegistry, this.mcpRegistry);
+    }
+    return this.mcpAdapter;
   }
 
   /** Handle new WebSocket connection */

@@ -303,18 +303,31 @@ tr:hover td { background: rgba(200,144,72,0.06); }
 .notif-panel-close { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 18px; line-height: 1; padding: 0 4px; }
 .notif-panel-close:hover { color: var(--text); }
 .notif-panel-empty { padding: 32px 16px; text-align: center; font-family: var(--font-mono); font-size: 10px; color: var(--dim); letter-spacing: 0.2em; }
-.notif-item { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; background: var(--bg-card); }
+.notif-item { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; background: var(--bg-card); cursor: pointer; transition: background 0.1s; }
 .notif-item:last-child { border-bottom: none; }
+.notif-item:hover { background: rgba(196,149,74,0.06); }
 .notif-item-hdr { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .notif-item-tool { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--text); }
 .notif-item-cd { font-family: var(--font-mono); font-size: 10px; color: var(--muted); flex-shrink: 0; }
 .notif-item-cd.urgent { color: var(--red); }
-.notif-item-reason { font-size: 11px; color: var(--muted); font-style: italic; line-height: 1.4; }
-.notif-item-actions { display: flex; gap: 6px; }
-.notif-item-actions .btn-approve { background: #2a4a2a; color: #6fcf6f; border: 1px solid #4a7a4a; padding: 5px 16px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer; letter-spacing: 0.06em; }
-.notif-item-actions .btn-approve:hover { background: #3a6a3a; }
-.notif-item-actions .btn-deny { background: #4a2020; color: #cf6f6f; border: 1px solid #7a4040; padding: 5px 16px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer; letter-spacing: 0.06em; }
-.notif-item-actions .btn-deny:hover { background: #6a2a2a; }
+.notif-item-reason { font-size: 11px; color: var(--muted); font-style: italic; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notif-item-hint { font-family: var(--font-mono); font-size: 9px; color: var(--dim); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 2px; }
+/* Approval detail popup */
+.approval-modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 800; display: none; align-items: center; justify-content: center; }
+.approval-modal-bg.open { display: flex; }
+.approval-modal { background: var(--bg-sidebar); border: 1px solid #c4954a; border-radius: 14px; padding: 28px 28px 22px; width: 480px; max-width: calc(100vw - 32px); max-height: calc(100vh - 64px); overflow-y: auto; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 16px 48px rgba(0,0,0,0.5); }
+.approval-modal-title { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.22em; color: #c4954a; text-transform: uppercase; }
+.approval-modal-tool { font-family: var(--font-tactical); font-size: 26px; color: var(--text); line-height: 1; letter-spacing: 0.04em; }
+.approval-modal-cd { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.approval-modal-cd.urgent { color: var(--red); font-weight: 700; }
+.approval-modal-reason { font-size: 12px; color: var(--muted); font-style: italic; line-height: 1.6; padding: 10px 14px; border-left: 2px solid var(--border); }
+.approval-modal-input-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.2em; color: var(--dim); text-transform: uppercase; }
+.approval-modal-input { background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); max-height: 180px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; line-height: 1.5; }
+.approval-modal-actions { display: flex; gap: 10px; margin-top: 6px; }
+.approval-modal-actions .btn-approve { flex: 1; background: #2a4a2a; color: #6fcf6f; border: 1px solid #4a7a4a; padding: 10px 0; border-radius: 8px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; cursor: pointer; letter-spacing: 0.1em; transition: background 0.1s; }
+.approval-modal-actions .btn-approve:hover { background: #3a6a3a; }
+.approval-modal-actions .btn-deny { flex: 1; background: #4a2020; color: #cf6f6f; border: 1px solid #7a4040; padding: 10px 0; border-radius: 8px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; cursor: pointer; letter-spacing: 0.1em; transition: background 0.1s; }
+.approval-modal-actions .btn-deny:hover { background: #6a2a2a; }
 @keyframes bellShake { 0%,100%{transform:rotate(0)} 15%{transform:rotate(12deg)} 30%{transform:rotate(-10deg)} 45%{transform:rotate(7deg)} 60%{transform:rotate(-5deg)} 75%{transform:rotate(3deg)} }
 .notif-bell-btn.shake { animation: bellShake 0.5s ease; }
 @keyframes notifToast { 0%{opacity:0;transform:translateY(-8px)} 10%{opacity:1;transform:translateY(0)} 80%{opacity:1} 100%{opacity:0;transform:translateY(-8px)} }
@@ -1565,6 +1578,13 @@ async function apiFetch(url, opts = {}) {
 function initApp() {
   connect();
   loadCredStatus();
+  // Auto-connect WebSocket using the same token used for HTTP/SSE.
+  // This is essential for receiving tool:approval:request messages and
+  // skills:updated events without the user having to manually open the Chat tab.
+  if (authToken) {
+    $('chat-token').value = authToken;
+    chatConnect(authToken);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1857,6 +1877,9 @@ function appendEvent(payload) {
 // ═══════════════════════════════════════════════════════════════
 let chatWs = null;
 let chatConnected = false;
+let chatReconnectDelay = 1000;
+let chatReconnectTimer = null;
+let chatManualDisconnect = false;
 let streamingMsgEl = null;  // current streaming bubble element
 let streamingContent = '';
 const approvalTimers = new Map(); // requestId → intervalId
@@ -1911,6 +1934,9 @@ function setChatState(state) {
 
 function chatToggleConnect() {
   if (chatWs && chatWs.readyState <= 1 /* OPEN or CONNECTING */) {
+    // Manual disconnect — disable auto-reconnect until user reconnects
+    chatManualDisconnect = true;
+    if (chatReconnectTimer) { clearTimeout(chatReconnectTimer); chatReconnectTimer = null; }
     chatWs.close();
     chatWs = null;
     chatConnected = false;
@@ -1924,6 +1950,8 @@ function chatToggleConnect() {
     setTimeout(() => { $('chat-token').style.borderColor = ''; }, 1500);
     return;
   }
+  chatManualDisconnect = false;
+  chatReconnectDelay = 1000;
   chatConnect(token);
 }
 
@@ -1958,6 +1986,7 @@ function chatConnect(token) {
       case 'auth:result': {
         if (msg.payload.success) {
           chatConnected = true;
+          chatReconnectDelay = 1000; // reset backoff on successful auth
           setChatState('ready');
         } else {
           appendChatNotice('⚠️ Authentication failed: ' + (msg.payload.error || 'invalid token'));
@@ -2054,6 +2083,16 @@ function chatConnect(token) {
     setChatState('disconnected');
     $('chat-send-btn').disabled = true;
     $('chat-input').disabled = true;
+
+    // Auto-reconnect with exponential backoff (max 30s) — but only if user didn't manually disconnect
+    if (!chatManualDisconnect && authToken) {
+      if (chatReconnectTimer) clearTimeout(chatReconnectTimer);
+      chatReconnectTimer = setTimeout(() => {
+        chatReconnectTimer = null;
+        chatReconnectDelay = Math.min(chatReconnectDelay * 2, 30000);
+        chatConnect(authToken);
+      }, chatReconnectDelay);
+    }
   };
 }
 
@@ -2125,18 +2164,43 @@ function renderNotifPanel() {
     const item = document.createElement('div');
     item.className = 'notif-item';
     item.id = 'nitem-' + rid;
+    item.setAttribute('onclick', 'openApprovalModal(' + JSON.stringify(rid) + ')');
     item.innerHTML =
       '<div class="notif-item-hdr">'
       + '<span class="notif-item-tool">' + esc(data.toolName) + '</span>'
       + '<span class="notif-item-cd" id="nicd-' + rid + '">…</span>'
       + '</div>'
       + (data.reason ? '<div class="notif-item-reason">' + esc(data.reason) + '</div>' : '')
-      + '<div class="notif-item-actions">'
-      + '<button class="btn-approve" onclick="respondApproval(\\'' + rid + '\\', true)">✓ Approve</button>'
-      + '<button class="btn-deny"    onclick="respondApproval(\\'' + rid + '\\', false)">✗ Deny</button>'
-      + '</div>';
+      + '<div class="notif-item-hint">tap to review &amp; approve</div>';
     body.appendChild(item);
   });
+}
+
+function openApprovalModal(rid) {
+  const data = pendingNotifications.get(rid);
+  if (!data) return;
+
+  $('approval-modal-bg').classList.add('open');
+  $('approval-modal-tool').textContent   = data.toolName;
+  $('approval-modal-reason').textContent = data.reason || '';
+  $('approval-modal-reason').style.display = data.reason ? '' : 'none';
+  $('approval-modal-input').textContent  = JSON.stringify(data.input || {}, null, 2);
+
+  // wire buttons
+  $('approval-modal-approve').onclick = () => respondApproval(rid, true);
+  $('approval-modal-deny').onclick    = () => respondApproval(rid, false);
+
+  // sync countdown display
+  const cdEl = $('approval-modal-cd');
+  const srcEl = document.getElementById('nicd-' + rid);
+  if (cdEl && srcEl) cdEl.textContent = srcEl.textContent;
+
+  // close panel
+  $('notif-panel').classList.remove('open');
+}
+
+function closeApprovalModal() {
+  $('approval-modal-bg').classList.remove('open');
 }
 
 function showNotifToast(toolName) {
@@ -2198,8 +2262,8 @@ function showApprovalCard(requestId, toolName, input, reason) {
       + (reason ? '<div class="approval-reason">' + esc(reason) + '</div>' : '')
       + '<div class="approval-input">' + esc(inputJson) + '</div>'
       + '<div class="approval-actions">'
-      +   '<button class="btn-approve" onclick="respondApproval(\\'' + requestId + '\\', true)">✓ Approve</button>'
-      +   '<button class="btn-deny"    onclick="respondApproval(\\'' + requestId + '\\', false)">✗ Deny</button>'
+      +   '<button class="btn-approve" onclick="openApprovalModal(' + JSON.stringify(requestId) + ')">✓ Review &amp; Approve</button>'
+      +   '<button class="btn-deny"    onclick="respondApproval(' + JSON.stringify(requestId) + ', false)">✗ Deny</button>'
       + '</div>';
 
     chatMessages.appendChild(card);
@@ -2219,6 +2283,12 @@ function showApprovalCard(requestId, toolName, input, reason) {
     if (notifEl) {
       notifEl.textContent = remaining + 's';
       if (remaining <= 10) notifEl.classList.add('urgent');
+    }
+    // Update countdown in approval modal (if open for this request)
+    const modalCd = $('approval-modal-cd');
+    if (modalCd && $('approval-modal-bg').classList.contains('open')) {
+      modalCd.textContent = remaining + 's remaining';
+      if (remaining <= 10) modalCd.classList.add('urgent'); else modalCd.classList.remove('urgent');
     }
     if (remaining <= 0) {
       clearInterval(interval);
@@ -2241,7 +2311,8 @@ function respondApproval(requestId, approved) {
   pendingNotifications.delete(requestId);
   updateBell();
 
-  // Close notification panel after responding
+  // Close modals
+  closeApprovalModal();
   const panel = $('notif-panel');
   if (panel && pendingNotifications.size === 0) panel.classList.remove('open');
 
@@ -4437,6 +4508,24 @@ function renderWsTasks(tasks, teams) {
   el.innerHTML = html;
 }
 </script>
+
+<!-- Approval Detail Modal -->
+<div class="approval-modal-bg" id="approval-modal-bg" onclick="if(event.target===this)closeApprovalModal()">
+  <div class="approval-modal">
+    <div class="approval-modal-title">⚠ Tool Approval Required</div>
+    <div class="approval-modal-tool" id="approval-modal-tool"></div>
+    <div class="approval-modal-cd" id="approval-modal-cd"></div>
+    <div class="approval-modal-reason" id="approval-modal-reason"></div>
+    <div>
+      <div class="approval-modal-input-label" style="margin-bottom:6px">Input Parameters</div>
+      <div class="approval-modal-input" id="approval-modal-input"></div>
+    </div>
+    <div class="approval-modal-actions">
+      <button class="btn-approve" id="approval-modal-approve">✓ Approve</button>
+      <button class="btn-deny"    id="approval-modal-deny">✗ Deny</button>
+    </div>
+  </div>
+</div>
 
 <!-- Notification Panel (floating, fixed position) -->
 <div class="notif-panel" id="notif-panel">
