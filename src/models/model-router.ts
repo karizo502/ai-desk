@@ -45,7 +45,12 @@ export class ModelRouter {
     this.providers.set(provider.name, provider);
     for (const m of provider.supportedModels()) {
       this.modelToProvider.set(`${provider.name}/${m}`, provider);
-      this.modelToProvider.set(m, provider);
+      // Only register the bare model name when it has no provider prefix of its own.
+      // OpenRouter returns names like 'anthropic/claude-sonnet-4-5' which must NOT
+      // overwrite the real AnthropicProvider's registration for the same key.
+      if (!m.includes('/')) {
+        this.modelToProvider.set(m, provider);
+      }
     }
   }
 
