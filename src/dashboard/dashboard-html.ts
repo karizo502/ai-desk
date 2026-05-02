@@ -1196,19 +1196,15 @@ svg.ws-dag-svg { display: block; }
         <div style="font-size:12px;margin-bottom:12px">Status: <span id="goo-status">...</span></div>
         <div style="display:flex;gap:8px;margin-bottom:16px">
           <button class="btn active" id="tab-apikey" onclick="switchGoogleTab('apikey')">API Key</button>
-          <button class="btn" id="tab-oauth" onclick="switchGoogleTab('oauth')">OAuth</button>
+          <button class="btn" id="tab-oauth" onclick="switchGoogleTab('oauth')">Gemini CLI</button>
         </div>
         <div id="google-apikey-pane">
           <input type="password" id="goo-key" class="login-input" placeholder="AIzaSy...">
           <button class="btn primary" onclick="saveGoogleKey()">Save Key</button>
         </div>
         <div id="google-oauth-pane" style="display:none">
-          <button class="btn primary" id="oauth-start-btn" onclick="startGoogleOAuth()">Sign in with Google</button>
-          <div id="device-box" style="display:none;margin-top:16px;padding:12px;background:var(--bg-input);border-radius:8px">
-            <div>Visit <a id="device-url" href="#" target="_blank" style="color:var(--accent)"></a></div>
-            <div style="margin:8px 0">Code: <strong id="device-code" style="font-size:18px;letter-spacing:2px"></strong></div>
-            <div id="device-timer" style="font-size:11px;color:var(--muted)"></div>
-          </div>
+          <div id="gemini-cli-detect" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
+          <button class="btn primary" id="oauth-start-btn" onclick="importGeminiCli()">Import from Gemini CLI</button>
         </div>
         <div id="goo-msg" style="margin-top:12px;font-size:12px;min-height:16px"></div>
         <button class="btn danger" style="margin-top:12px" onclick="clearCred('google', 'goo-status', 'goo-msg')">Clear</button>
@@ -2409,7 +2405,6 @@ $('chat-input').addEventListener('keydown', function(e) {
 //  Credentials
 // ═══════════════════════════════════════════════════════════════
 let googleTab = 'apikey';
-let devicePollTimer = null;
 
 function switchAnthropicTab(tab) {
   $('tab-ant-apikey').classList.toggle('active', tab === 'apikey');
@@ -2467,9 +2462,14 @@ async function loadCredStatus() {
     } else {
       $('goo-status').innerHTML = badge('not set', 'red');
     }
-    if (!s.google?.oauthAvailable) {
-      $('tab-oauth').title = 'Set GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET in .env to enable';
-      $('tab-oauth').style.opacity = '0.45';
+    if (s.google?.geminiCliAvailable) {
+      $('gemini-cli-detect').textContent = 'Gemini CLI credentials found at ' + s.google.geminiCliPath;
+      $('oauth-start-btn').disabled = false;
+      $('tab-oauth').style.opacity = '';
+    } else {
+      $('gemini-cli-detect').textContent = 'No Gemini CLI credentials found. Run: gemini auth login';
+      $('oauth-start-btn').disabled = true;
+      $('tab-oauth').style.opacity = '0.6';
     }
 
     // OpenRouter
@@ -2559,56 +2559,22 @@ async function clearCred(provider, statusId, msgId) {
   } catch (e) { showMsg(msgId, String(e), 'err'); }
 }
 
-async function startGoogleOAuth() {
+async function importGeminiCli() {
   $('oauth-start-btn').disabled = true;
-  $('device-box').style.display = 'none';
-  showMsg('goo-msg', '', '');
+  showMsg('goo-msg', 'Importing...', '');
   try {
-    const r = await apiFetch('/dashboard/api/auth/google/device/start', { method: 'POST' });
+    const r = await apiFetch('/dashboard/api/credentials/google/gemini-cli', { method: 'POST' });
     const d = await r.json();
     if (d.error) {
       showMsg('goo-msg', d.error, 'err');
-      $('oauth-start-btn').disabled = false;
-      return;
+    } else {
+      showMsg('goo-msg', 'Imported' + (d.email ? ' as ' + d.email : '') + '. Active on next API call.', 'ok');
+      loadCredStatus();
     }
-    const urlEl = $('device-url');
-    urlEl.href = d.verificationUrl;
-    urlEl.textContent = d.verificationUrl;
-    $('device-code').textContent = d.userCode;
-    $('device-box').style.display = '';
-
-    const expiresAt = Date.now() + d.expiresIn * 1000;
-    const interval  = (d.interval || 5) * 1000;
-
-    function tick() {
-      const rem = Math.max(0, Math.round((expiresAt - Date.now()) / 1000));
-      $('device-timer').textContent = rem > 0 ? 'Expires in ' + rem + 's' : 'Expired';
-    }
-    tick();
-    const tickTimer = setInterval(tick, 1000);
-
-    devicePollTimer = setInterval(async () => {
-      try {
-        const pr = await apiFetch('/dashboard/api/auth/google/device/poll');
-        const pd = await pr.json();
-        if (pd.status === 'complete') {
-          clearInterval(devicePollTimer); clearInterval(tickTimer);
-          $('device-box').style.display = 'none';
-          $('oauth-start-btn').disabled = false;
-          showMsg('goo-msg', 'Signed in' + (pd.email ? ' as ' + pd.email : '') + '. Active on next API call.', 'ok');
-          loadCredStatus();
-        } else if (pd.status === 'denied' || pd.status === 'expired' || pd.status === 'error') {
-          clearInterval(devicePollTimer); clearInterval(tickTimer);
-          $('device-box').style.display = 'none';
-          $('oauth-start-btn').disabled = false;
-          showMsg('goo-msg', 'Sign-in ' + pd.status + (pd.message ? ': ' + pd.message : ''), 'err');
-        }
-      } catch { /* poll failure — keep trying */ }
-    }, interval);
   } catch (e) {
     showMsg('goo-msg', String(e), 'err');
-    $('oauth-start-btn').disabled = false;
   }
+  $('oauth-start-btn').disabled = false;
 }
 
 async function connectTelegram() {

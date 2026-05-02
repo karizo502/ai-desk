@@ -23,11 +23,56 @@ export type AnthropicCredential =
 
 export type GoogleCredential =
   | { type: 'api_key'; apiKey: string }
-  | { type: 'oauth'; accessToken: string; refreshToken: string; expiresAt: number; email?: string };
+  | { type: 'oauth'; accessToken: string; refreshToken: string; expiresAt: number; email?: string; clientId?: string; clientSecret?: string };
 
 export type OpenRouterCredential = { type: 'api_key'; apiKey: string };
 
 export type ProviderCredential = AnthropicCredential | GoogleCredential | OpenRouterCredential;
+
+// ─── Gemini CLI credential file helpers ───────────────────────────────────────
+
+interface GeminiCliFile {
+  access_token?:  string;
+  refresh_token?: string;
+  expiry_date?:   number;   // ms timestamp (some versions)
+  token_expiry?:  string;   // ISO date string (other versions)
+  client_id?:     string;
+  client_secret?: string;
+  type?:          string;
+}
+
+export function geminiCliCredentialsPath(): string {
+  return join(homedir(), '.gemini', 'oauth_creds.json');
+}
+
+export function readGeminiCliCredentials(): {
+  accessToken?:  string;
+  refreshToken?: string;
+  expiresAt?:    number;
+  clientId?:     string;
+  clientSecret?: string;
+} | null {
+  const path = geminiCliCredentialsPath();
+  if (!existsSync(path)) return null;
+  try {
+    const data = JSON.parse(readFileSync(path, 'utf-8')) as GeminiCliFile;
+    if (!data.refresh_token && !data.access_token) return null;
+
+    let expiresAt: number | undefined;
+    if (data.expiry_date)    expiresAt = data.expiry_date;
+    else if (data.token_expiry) expiresAt = new Date(data.token_expiry).getTime();
+
+    return {
+      accessToken:  data.access_token,
+      refreshToken: data.refresh_token,
+      expiresAt,
+      clientId:     data.client_id,
+      clientSecret: data.client_secret,
+    };
+  } catch {
+    return null;
+  }
+}
 
 // ─── Claude Code credential file helpers ──────────────────────────────────────
 
@@ -182,8 +227,8 @@ export class CredentialStore {
 
     if (!cred.refreshToken) return cred.accessToken; // no refresh token — use as-is
 
-    const clientId = process.env.GOOGLE_CLIENT_ID ?? '';
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET ?? '';
+    const clientId     = process.env.GOOGLE_CLIENT_ID     ?? cred.clientId     ?? '';
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET ?? cred.clientSecret ?? '';
     if (!clientId || !clientSecret) return cred.accessToken; // can't refresh without client creds
 
     try {

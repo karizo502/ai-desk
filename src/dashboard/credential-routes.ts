@@ -16,25 +16,17 @@
  * short user_code to approve access. No redirect URL required.
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { readClaudeCodeCredentials, claudeCodeCredentialsPath } from '../auth/credential-store.js';
+import {
+  readClaudeCodeCredentials, claudeCodeCredentialsPath,
+  readGeminiCliCredentials, geminiCliCredentialsPath,
+} from '../auth/credential-store.js';
 import type { CredentialStore } from '../auth/credential-store.js';
 import type { MessagingManager } from '../messaging/messaging-manager.js';
 
-const GOOGLE_DEVICE_URL = 'https://oauth2.googleapis.com/device/code';
-const GOOGLE_TOKEN_URL  = 'https://oauth2.googleapis.com/token';
-const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/generative-language openid email profile';
-
-interface DeviceFlowState {
-  deviceCode: string;
-  userCode: string;
-  verificationUrl: string;
-  expiresAt: number;
-  interval: number;
-}
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
 export class CredentialRoutes {
   private store: CredentialStore;
-  private pending: DeviceFlowState | null = null;
   private messagingMgr: MessagingManager | null = null;
 
   constructor(store: CredentialStore, messagingMgr?: MessagingManager) {
@@ -75,11 +67,11 @@ export class CredentialRoutes {
     if (url === '/dashboard/api/credentials/google' && method === 'DELETE') {
       this.store.delete('google'); this.json(res, { ok: true }); return true;
     }
-    if (url === '/dashboard/api/auth/google/device/start' && method === 'POST') {
-      void this.handleDeviceStart(res); return true;
+    if (url === '/dashboard/api/credentials/google/gemini-cli' && method === 'GET') {
+      this.handleDetectGeminiCli(res); return true;
     }
-    if (url === '/dashboard/api/auth/google/device/poll' && method === 'GET') {
-      void this.handleDevicePoll(res); return true;
+    if (url === '/dashboard/api/credentials/google/gemini-cli' && method === 'POST') {
+      void this.handleImportGeminiCli(res); return true;
     }
     // OpenRouter
     if (url === '/dashboard/api/credentials/openrouter' && method === 'POST') {
@@ -103,7 +95,7 @@ export class CredentialRoutes {
 
   private handleStatus(res: ServerResponse): void {
     const s = this.store.status();
-    const googleClientReady = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+    const geminiCliAvailable = readGeminiCliCredentials() !== null;
     const claudeCodeAvailable = readClaudeCodeCredentials() !== null;
 
     this.json(res, {
@@ -119,8 +111,9 @@ export class CredentialRoutes {
         type:           s['google']?.type ?? null,
         email:          s['google']?.email ?? null,
         expiresAt:      s['google']?.expiresAt ?? null,
-        fromEnv:        !!(process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY),
-        oauthAvailable: googleClientReady,
+        fromEnv:           !!(process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY),
+        geminiCliAvailable,
+        geminiCliPath:     geminiCliCredentialsPath(),
       },
       openrouter: {
         configured: s['openrouter']?.configured ?? false,
@@ -213,127 +206,76 @@ export class CredentialRoutes {
     this.json(res, { ok: true });
   }
 
-  private async handleDeviceStart(res: ServerResponse): Promise<void> {
-    const clientId = process.env.GOOGLE_CLIENT_ID ?? '';
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET ?? '';
+  private handleDetectGeminiCli(res: ServerResponse): void {
+    const creds = readGeminiCliCredentials();
+    this.json(res, {
+      found: creds !== null,
+      path:  geminiCliCredentialsPath(),
+    });
+  }
 
-    if (!clientId || !clientSecret) {
-      this.error(res, 400,
-        'GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set in .env to use OAuth sign-in. ' +
-        'Create an OAuth 2.0 client in Google Cloud Console (type: "TVs and Limited Input devices").'
+  private async handleImportGeminiCli(res: ServerResponse): Promise<void> {
+    const creds = readGeminiCliCredentials();
+    if (!creds) {
+      this.error(res, 404,
+        'Gemini CLI credentials not found. Install Gemini CLI and run `gemini auth login` first.'
       );
       return;
     }
 
-    try {
-      const resp = await fetch(GOOGLE_DEVICE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ client_id: clientId, scope: GOOGLE_SCOPES }),
-      });
+    let accessToken  = creds.accessToken  ?? '';
+    let expiresAt    = creds.expiresAt    ?? 0;
+    const refreshToken  = creds.refreshToken  ?? '';
+    const clientId      = creds.clientId      ?? '';
+    const clientSecret  = creds.clientSecret  ?? '';
 
-      const data = await resp.json() as {
-        device_code?: string;
-        user_code?: string;
-        verification_url?: string;
-        expires_in?: number;
-        interval?: number;
-        error?: string;
-        error_description?: string;
-      };
-
-      if (!resp.ok || data.error) {
-        this.error(res, 502, data.error_description ?? data.error ?? 'Google device auth failed');
-        return;
-      }
-
-      this.pending = {
-        deviceCode:      data.device_code!,
-        userCode:        data.user_code!,
-        verificationUrl: data.verification_url!,
-        expiresAt:       Date.now() + (data.expires_in! * 1000),
-        interval:        data.interval ?? 5,
-      };
-
-      this.json(res, {
-        userCode:        this.pending.userCode,
-        verificationUrl: this.pending.verificationUrl,
-        expiresIn:       data.expires_in,
-        interval:        this.pending.interval,
-      });
-    } catch (err) {
-      this.error(res, 502, `Device flow start failed: ${(err as Error).message}`);
+    // If access token is missing or expired, refresh immediately
+    const needsRefresh = !accessToken || (expiresAt && Date.now() >= expiresAt - 5 * 60 * 1000);
+    if (needsRefresh && refreshToken && clientId && clientSecret) {
+      try {
+        const resp = await fetch(GOOGLE_TOKEN_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id:     clientId,
+            client_secret: clientSecret,
+            refresh_token: refreshToken,
+            grant_type:    'refresh_token',
+          }),
+        });
+        const data = await resp.json() as { access_token?: string; expires_in?: number; error?: string };
+        if (data.access_token) {
+          accessToken = data.access_token;
+          expiresAt   = Date.now() + ((data.expires_in ?? 3600) * 1000);
+        }
+      } catch { /* use existing token as-is */ }
     }
-  }
 
-  private async handleDevicePoll(res: ServerResponse): Promise<void> {
-    if (!this.pending) { this.json(res, { status: 'none' }); return; }
-
-    if (Date.now() > this.pending.expiresAt) {
-      this.pending = null;
-      this.json(res, { status: 'expired' });
+    if (!accessToken) {
+      this.error(res, 400, 'Could not obtain a valid access token from Gemini CLI credentials.');
       return;
     }
 
-    const clientId     = process.env.GOOGLE_CLIENT_ID ?? '';
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET ?? '';
-
+    // Fetch email to display in UI
+    let email: string | undefined;
     try {
-      const resp = await fetch(GOOGLE_TOKEN_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id:     clientId,
-          client_secret: clientSecret,
-          device_code:   this.pending.deviceCode,
-          grant_type:    'urn:ietf:params:oauth:grant-type:device_code',
-        }),
+      const userResp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
+      email = ((await userResp.json()) as { email?: string }).email;
+    } catch { /* email is optional */ }
 
-      const data = await resp.json() as {
-        access_token?:  string;
-        refresh_token?: string;
-        expires_in?:    number;
-        error?:         string;
-      };
+    this.store.set('google', {
+      type:         'oauth',
+      accessToken,
+      refreshToken,
+      expiresAt:    expiresAt || Date.now() + 3600_000,
+      email,
+      clientId:     clientId  || undefined,
+      clientSecret: clientSecret || undefined,
+    });
 
-      if (data.error === 'authorization_pending' || data.error === 'slow_down') {
-        this.json(res, { status: 'pending' }); return;
-      }
-      if (data.error === 'access_denied') {
-        this.pending = null; this.json(res, { status: 'denied' }); return;
-      }
-      if (data.error) {
-        this.pending = null; this.json(res, { status: 'error', message: data.error }); return;
-      }
-
-      if (data.access_token) {
-        // Fetch email so the UI can show who's signed in
-        let email: string | undefined;
-        try {
-          const userResp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-            headers: { Authorization: `Bearer ${data.access_token}` },
-          });
-          email = ((await userResp.json()) as { email?: string }).email;
-        } catch { /* email is optional */ }
-
-        this.store.set('google', {
-          type:         'oauth',
-          accessToken:  data.access_token,
-          refreshToken: data.refresh_token ?? '',
-          expiresAt:    Date.now() + ((data.expires_in ?? 3600) * 1000),
-          email,
-        });
-
-        this.pending = null;
-        this.json(res, { status: 'complete', email });
-        return;
-      }
-
-      this.json(res, { status: 'pending' });
-    } catch (err) {
-      this.error(res, 502, `Poll failed: ${(err as Error).message}`);
-    }
+    this.json(res, { ok: true, email });
   }
 
   // ─── helpers ────────────────────────────────────────────────────────────────
