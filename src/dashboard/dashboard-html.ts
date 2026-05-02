@@ -109,6 +109,7 @@ aside {
   letter-spacing: 0.24em; color: var(--muted);
 }
 .nav-group { display: flex; flex-direction: column; }
+.nav-scroll { flex: 1; overflow-y: auto; }
 .nav-tab {
   all: unset; cursor: pointer; display: flex; align-items: center; gap: 12px;
   padding: 12px 24px; padding-left: 21px;
@@ -502,65 +503,83 @@ svg.ws-dag-svg { display: block; }
       </div>
     </div>
   </div>
-  <div class="nav-section-label">OPERATIONS</div>
-  <nav class="nav-group">
-    <button class="nav-tab active" id="ntab-status" onclick="switchTab('status')">
-      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg>
-      Status<span class="nav-arrow">→</span>
-    </button>
-    <button class="nav-tab" id="ntab-agents" onclick="switchTab('agents')">
-      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.4 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.4 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.9.4l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.4-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.4-1.9l-.1-.1A2 2 0 116.9 4.5l.1.1a1.7 1.7 0 001.9.4h0a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.4l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.4 1.9v0a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
-      Agents
-    </button>
-    <button class="nav-tab" id="ntab-teams" onclick="switchTab('teams')">
-      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="3"/><path d="M3 19c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="7" r="2"/><path d="M15 19c0-2.5 1.8-4.5 4-5"/></svg>
-      Teams<span class="nav-arrow">→</span>
-    </button>
-    <button class="nav-tab" id="ntab-workspace" onclick="switchTab('workspace')">
-      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 17.5h7M17.5 14v7"/></svg>
-      Workspace
-    </button>
-    <button class="nav-tab" id="ntab-roles" onclick="switchTab('roles')">
-      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
-      Roles<span class="nav-arrow">→</span>
-    </button>
-    <button class="nav-tab" id="ntab-skills" onclick="switchTab('skills')">
-      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z"/></svg>
-      Skills
-    </button>
-    <button class="nav-tab" id="ntab-mcp" onclick="switchTab('mcp')">
-      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 11-12 0V8zM12 18v4"/></svg>
-      MCP
-    </button>
-    <button class="nav-tab" id="ntab-messaging" onclick="switchTab('messaging')">
-      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4V5z"/></svg>
-      Messaging
-    </button>
-    <button class="nav-tab" id="ntab-chat" onclick="switchTab('chat')">
-      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-      Chat
-    </button>
-    <button class="nav-tab" id="ntab-history" onclick="switchTab('history')">
-      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/><path d="M2.5 8.5A9 9 0 0112 3"/><path d="M2 5l1 5h5"/></svg>
-      History
-    </button>
-    <button class="nav-tab" id="ntab-schedule" onclick="switchTab('schedule')">
-      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-      Schedule
-    </button>
-    <button class="nav-tab" id="ntab-webhooks" onclick="switchTab('webhooks')">
-      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 018-8"/><path d="M20 12a8 8 0 01-8 8"/><path d="M12 4v4M12 16v4M4 12H2M22 12h-2"/><circle cx="12" cy="12" r="3"/></svg>
-      Webhooks
-    </button>
-    <button class="nav-tab" id="ntab-audit" onclick="switchTab('audit')">
-      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
-      Audit
-    </button>
-    <button class="nav-tab" id="ntab-creds" onclick="switchTab('creds')">
-      <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="14" r="4"/><path d="M11 11l9-9M16 6l3 3M14 8l3 3"/></svg>
-      Credentials
-    </button>
-  </nav>
+  <div class="nav-scroll">
+    <div class="nav-section-label">WORK</div>
+    <nav class="nav-group">
+      <button class="nav-tab active" id="ntab-status" onclick="switchTab('status')">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg>
+        Status<span class="nav-arrow">→</span>
+      </button>
+      <button class="nav-tab" id="ntab-chat" onclick="switchTab('chat')">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Chat<span class="nav-arrow">→</span>
+      </button>
+      <button class="nav-tab" id="ntab-workspace" onclick="switchTab('workspace')">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 17.5h7M17.5 14v7"/></svg>
+        Workspace<span class="nav-arrow">→</span>
+      </button>
+    </nav>
+
+    <div class="nav-section-label">BUILD</div>
+    <nav class="nav-group">
+      <button class="nav-tab" id="ntab-agents" onclick="switchTab('agents')">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.4 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.4 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.9.4l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.4-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.4-1.9l-.1-.1A2 2 0 116.9 4.5l.1.1a1.7 1.7 0 001.9.4h0a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.4l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.4 1.9v0a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+        Agents<span class="nav-arrow">→</span>
+      </button>
+      <button class="nav-tab" id="ntab-teams" onclick="switchTab('teams')">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="3"/><path d="M3 19c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="7" r="2"/><path d="M15 19c0-2.5 1.8-4.5 4-5"/></svg>
+        Teams<span class="nav-arrow">→</span>
+      </button>
+      <button class="nav-tab" id="ntab-roles" onclick="switchTab('roles')">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
+        Roles<span class="nav-arrow">→</span>
+      </button>
+      <button class="nav-tab" id="ntab-skills" onclick="switchTab('skills')">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z"/></svg>
+        Skills<span class="nav-arrow">→</span>
+      </button>
+      <button class="nav-tab" id="ntab-mcp" onclick="switchTab('mcp')">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 11-12 0V8zM12 18v4"/></svg>
+        MCP<span class="nav-arrow">→</span>
+      </button>
+    </nav>
+
+    <div class="nav-section-label">AUTOMATE</div>
+    <nav class="nav-group">
+      <button class="nav-tab" id="ntab-schedule" onclick="switchTab('schedule')">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        Schedule<span class="nav-arrow">→</span>
+      </button>
+      <button class="nav-tab" id="ntab-webhooks" onclick="switchTab('webhooks')">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 018-8"/><path d="M20 12a8 8 0 01-8 8"/><path d="M12 4v4M12 16v4M4 12H2M22 12h-2"/><circle cx="12" cy="12" r="3"/></svg>
+        Webhooks<span class="nav-arrow">→</span>
+      </button>
+      <button class="nav-tab" id="ntab-messaging" onclick="switchTab('messaging')">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4V5z"/></svg>
+        Messaging<span class="nav-arrow">→</span>
+      </button>
+    </nav>
+
+    <div class="nav-section-label">REVIEW</div>
+    <nav class="nav-group">
+      <button class="nav-tab" id="ntab-history" onclick="switchTab('history')">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/><path d="M2.5 8.5A9 9 0 0112 3"/><path d="M2 5l1 5h5"/></svg>
+        History<span class="nav-arrow">→</span>
+      </button>
+      <button class="nav-tab" id="ntab-audit" onclick="switchTab('audit')">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+        Audit<span class="nav-arrow">→</span>
+      </button>
+    </nav>
+
+    <div class="nav-section-label">SETTINGS</div>
+    <nav class="nav-group">
+      <button class="nav-tab" id="ntab-creds" onclick="switchTab('creds')">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="14" r="4"/><path d="M11 11l9-9M16 6l3 3M14 8l3 3"/></svg>
+        Credentials<span class="nav-arrow">→</span>
+      </button>
+    </nav>
+  </div>
   <div class="sidebar-ftr">
     <div class="theme-toggle" onclick="toggleTheme()">
       <span>THEME</span>
