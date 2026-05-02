@@ -259,6 +259,7 @@ export class AgentRuntime {
             maxTokens: 4096,
             temperature: 0.7,
             preferredModel: agentCfg.model?.primary,
+            agentFailover: agentCfg.model?.failover ?? [],
           });
 
           // Cache keyed on requested model name (not result.model full version string)

@@ -23,6 +23,8 @@ export interface RouteOptions extends Omit<ModelCallOptions, 'model'> {
   complexity?: TaskComplexity;
   preferredModel?: string;
   forSubagent?: boolean;
+  /** Per-agent failover chain — used instead of global failover when preferredModel is set */
+  agentFailover?: string[];
 }
 
 export class ModelRouter {
@@ -86,10 +88,9 @@ export class ModelRouter {
   /** Make a routed call with automatic failover */
   async call(opts: RouteOptions): Promise<ModelCallResult> {
     const primary = this.pickModel(opts);
-    const failoverChain = [
-      primary,
-      ...(opts.forSubagent ? [] : (this.modelConfig.failover ?? [])),
-    ];
+    const failoverChain = opts.preferredModel
+      ? [primary, ...(opts.agentFailover ?? [])]
+      : [primary, ...(opts.forSubagent ? [] : (this.modelConfig.failover ?? []))];
 
     let lastError: Error | null = null;
 
