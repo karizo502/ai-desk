@@ -44,10 +44,21 @@ export class TeamCoordinator {
     return null;
   }
 
-  async run(teamId: string, goal: string): Promise<TeamRunResult> {
+  async run(
+    teamId: string,
+    goal: string,
+    opts?: { channelId?: string; peerId?: string },
+  ): Promise<TeamRunResult> {
     const start = Date.now();
     const team = this.teams.get(teamId);
     if (!team) throw new Error(`Team not found: ${teamId}`);
+    const totalTokens = { input: 0, output: 0, total: 0, cost: 0 };
+    const addTokens = (t: { input: number; output: number; total: number; cost: number }) => {
+      totalTokens.input  += t.input;
+      totalTokens.output += t.output;
+      totalTokens.total  += t.total;
+      totalTokens.cost   += t.cost;
+    };
 
     eventBus.emit('team:start', { teamId, teamName: team.name, goal });
 
@@ -91,6 +102,7 @@ export class TeamCoordinator {
       channelId: `team:${teamId}:_decompose`,
       peerId: 'coordinator',
     });
+    addTokens(decompositionResult.tokensUsed);
 
     if (!decompositionResult.success) {
       const err = `Lead agent failed during decomposition: ${decompositionResult.error}`;
@@ -107,6 +119,7 @@ export class TeamCoordinator {
         doneCount: 0,
         failedCount: 0,
         totalDurationMs: Date.now() - start,
+        tokensUsed: totalTokens,
       };
     }
 
@@ -143,6 +156,7 @@ export class TeamCoordinator {
         doneCount: 0,
         failedCount: 0,
         totalDurationMs: Date.now() - start,
+        tokensUsed: totalTokens,
       };
     }
 
@@ -151,13 +165,16 @@ export class TeamCoordinator {
       durationMs: decompositionResult.durationMs });
 
     // Empty task list = lead handles this directly (conversational/trivial goal, no team delegation needed)
+    // Use the caller's channelId/peerId so the lead agent's conversation history stays clean
+    // (avoids mixing user messages with internal coordinator sessions).
     if (tasks.length === 0) {
       const directResult = await this.runtime.run({
         userMessage: goal,
         agentId: team.leadAgentId,
-        channelId: `team:${teamId}`,
-        peerId: 'coordinator',
+        channelId: opts?.channelId ?? `team:${teamId}:direct`,
+        peerId: opts?.peerId ?? 'user',
       });
+      addTokens(directResult.tokensUsed);
       const synthesis = directResult.success ? directResult.content : `Error: ${directResult.error}`;
       const directRunResult: TeamRunResult = {
         teamId, teamName: team.name, goal,
@@ -165,6 +182,7 @@ export class TeamCoordinator {
         synthesis,
         taskCount: 0, doneCount: 0, failedCount: 0,
         totalDurationMs: Date.now() - start,
+        tokensUsed: totalTokens,
       };
       eventBus.emit('team:complete', { teamId, teamName: team.name, success: directRunResult.success, durationMs: directRunResult.totalDurationMs });
       return directRunResult;
@@ -238,6 +256,7 @@ export class TeamCoordinator {
         });
       },
     });
+    addTokens(synthesisResult.tokensUsed);
 
     if (synthesisResult.success) {
       eventBus.emit('task:done', { taskId: `${teamId}:__synthesize__`, agentId: team.leadAgentId, teamId,
@@ -261,6 +280,7 @@ export class TeamCoordinator {
       doneCount: orchResult.doneCount,
       failedCount: orchResult.failedCount,
       totalDurationMs: Date.now() - start,
+      tokensUsed: totalTokens,
     };
 
     eventBus.emit('team:complete', {

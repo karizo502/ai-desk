@@ -204,4 +204,16 @@ export class ToolExecutor {
       return decision.allowed || decision.requiresApproval;
     });
   }
+
+  /** Merge policy-visible tools with per-request extra tools (e.g. run_team). */
+  visibleToolsWithExtra(
+    extraTools?: import('./tool-registry.js').RegisteredTool[],
+  ): ReturnType<ToolRegistry['list']> {
+    const base = this.visibleTools();
+    if (!extraTools?.length) return base;
+    return [...base, ...extraTools.map(t => t.definition)];
+  }
+
+  /** Expose the sandbox instance so agent-runtime can pass it to extra-tool executors. */
+  getSandbox(): SandboxManager { return this.sandbox; }
 }

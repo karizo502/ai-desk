@@ -1,4 +1,4 @@
-# AI\_DESK
+# Ai\_DESK
 
 <div align="center">
     <picture>
@@ -19,9 +19,9 @@ A security-first gateway for running personal AI agents in a hardened, controlle
 
 ---
 
-## What is AI\_DESK?
+## What is Ai\_DESK?
 
-AI\_DESK is a self-hosted AI agent gateway that sits between you and the AI providers (Anthropic, Google, OpenRouter). It manages:
+Ai\_DESK is a self-hosted AI agent gateway that sits between you and the AI providers (Anthropic, Google, OpenRouter). It manages:
 
 - **Multiple AI agents** with per-agent model, tools, budget, and sandbox configuration
 - **Messaging platform bots** (Telegram, Discord) that route to your agents

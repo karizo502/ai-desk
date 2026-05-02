@@ -46,6 +46,11 @@ export interface AgentRunRequest {
    * Used by the Telegram adapter to route approval requests as inline-keyboard messages.
    */
   requestApproval?: import('./tool-executor.js').ApprovalRequester;
+  /**
+   * Extra tools injected for this specific run only — bypass policy/approval/sandbox.
+   * Used by the gateway to inject run_team for lead agents in autonomous mode.
+   */
+  extraTools?: import('./tool-registry.js').RegisteredTool[];
 }
 
 export type AgentProgressEvent =
@@ -185,8 +190,11 @@ export class AgentRuntime {
       req.onProgress?.({ type: 'compaction', messagesBefore: before, messagesAfter: working.length });
     }
 
-    // Tools available based on policy
-    const tools = this.executor.visibleTools();
+    // Tools available based on policy + per-run extras (e.g. run_team)
+    const tools = this.executor.visibleToolsWithExtra(req.extraTools);
+    const extraToolMap = req.extraTools?.length
+      ? new Map(req.extraTools.map(t => [t.definition.name, t]))
+      : null;
     const basePrompt = this.systemPromptProvider ? this.systemPromptProvider(req.agentId) : DEFAULT_SYSTEM_PROMPT;
     const sysPrompt = agentCfg.personality ? agentCfg.personality + '\n\n' + basePrompt : basePrompt;
 
@@ -294,26 +302,60 @@ export class AgentRuntime {
         }
 
         for (const toolCall of result.toolCalls) {
-          const execResult = await this.executor.execute({
-            call: toolCall,
-            agentId: req.agentId,
-            sessionId: session.id,
-            runId,
-            workspace,
-            subagentDepth: 0,
-            requestApproval: req.requestApproval,
-          });
+          const toolStart = Date.now();
+          const extraTool = extraToolMap?.get(toolCall.name);
 
-          req.onProgress?.({
-            type: 'tool_result',
-            toolName: toolCall.name,
-            durationMs: execResult.durationMs,
-            isError: execResult.isError,
-          });
+          let toolOutput: string;
+          let toolIsError: boolean;
+
+          if (extraTool) {
+            // Extra tools (e.g. run_team) bypass policy/approval/sandbox — trusted internal ops.
+            try {
+              const r = await extraTool.execute(
+                toolCall.input as Record<string, unknown>,
+                {
+                  workspace,
+                  sessionId: session.id,
+                  agentId: req.agentId,
+                  runId,
+                  sandbox: this.executor.getSandbox(),
+                },
+              );
+              toolOutput = r.output;
+              toolIsError = r.isError ?? false;
+            } catch (err) {
+              toolOutput = `Error: ${(err as Error).message}`;
+              toolIsError = true;
+            }
+            req.onProgress?.({
+              type: 'tool_result',
+              toolName: toolCall.name,
+              durationMs: Date.now() - toolStart,
+              isError: toolIsError,
+            });
+          } else {
+            const execResult = await this.executor.execute({
+              call: toolCall,
+              agentId: req.agentId,
+              sessionId: session.id,
+              runId,
+              workspace,
+              subagentDepth: 0,
+              requestApproval: req.requestApproval,
+            });
+            toolOutput = execResult.output;
+            toolIsError = execResult.isError;
+            req.onProgress?.({
+              type: 'tool_result',
+              toolName: toolCall.name,
+              durationMs: execResult.durationMs,
+              isError: execResult.isError,
+            });
+          }
 
           working.push({
             role: 'tool',
-            content: execResult.output,
+            content: toolOutput,
             toolUseId: toolCall.id,
             toolName: toolCall.name,
           });

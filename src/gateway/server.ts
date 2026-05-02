@@ -37,6 +37,7 @@ import { CronStore } from '../dashboard/cron-store.js';
 import { CronScheduler } from '../dashboard/cron-scheduler.js';
 import { ConnectionStore } from '../dashboard/connection-store.js';
 import { TeamCoordinator } from '../roles/team-coordinator.js';
+import { buildRunTeamTool } from '../roles/run-team-tool.js';
 import { eventBus } from '../shared/events.js';
 import { loadConfig } from '../config/config-loader.js';
 import { parseMessage, createMessage, type ProtocolMessage } from './protocol.js';
@@ -766,17 +767,31 @@ export class GatewayServer {
       peerId?: string;
     };
     const rawContent = payload.content ?? '';
-    // @direct prefix bypasses team routing — lead agent answers directly
-    const bypassTeam = rawContent.startsWith('@direct ');
-    const content = bypassTeam ? rawContent.slice('@direct '.length) : rawContent;
     const agentId = payload.agentId ?? this.defaultAgentId();
     const channelId = payload.channelId ?? `conn:${connectionId}`;
     const peerId = payload.peerId ?? `conn:${connectionId}`;
 
-    // Route through TeamCoordinator if agent is a team lead (and not bypassed)
-    const team = (!bypassTeam && this.teamCoordinator)
-      ? this.teamCoordinator.findTeamByLead(agentId)
-      : null;
+    // Routing modes:
+    //   @direct <msg>       — lead handles alone, no team tool injected
+    //   @team <msg>         — force team (lead's primary team)
+    //   @team/{id} <msg>    — force specific team by id
+    //   <msg>               — lead handles directly; run_team tool available if it wants to delegate
+    let content = rawContent;
+    let forceTeamId: string | null = null;
+    let soloMode = false;
+
+    if (rawContent.startsWith('@direct ')) {
+      content = rawContent.slice('@direct '.length);
+      soloMode = true;
+    } else if (rawContent.startsWith('@team/')) {
+      const rest = rawContent.slice('@team/'.length);
+      const spaceIdx = rest.indexOf(' ');
+      forceTeamId = spaceIdx === -1 ? rest : rest.slice(0, spaceIdx);
+      content = spaceIdx === -1 ? '' : rest.slice(spaceIdx + 1);
+    } else if (rawContent.startsWith('@team ')) {
+      content = rawContent.slice('@team '.length);
+      forceTeamId = '__lead__'; // resolve to lead's primary team below
+    }
 
     eventBus.emit('message:received', {
       connectionId,
@@ -800,9 +815,16 @@ export class GatewayServer {
     };
 
     try {
-      if (team) {
+      // Resolve forced team ID
+      if (forceTeamId === '__lead__' && this.teamCoordinator) {
+        const leadTeam = this.teamCoordinator.findTeamByLead(agentId);
+        forceTeamId = leadTeam?.id ?? null;
+      }
+
+      if (forceTeamId && this.teamCoordinator) {
+        // @team / @team/{id} — force team delegation
         onProgress({ type: 'thinking' } as AgentProgressEvent);
-        const teamResult = await this.teamCoordinator!.run(team.id, content);
+        const teamResult = await this.teamCoordinator.run(forceTeamId, content, { channelId, peerId });
 
         conn.ws.send(JSON.stringify(createMessage('chat:stream:end', {
           sessionId,
@@ -815,17 +837,37 @@ export class GatewayServer {
           agentId,
           sessionId,
           model: 'team',
-          tokensUsed: { input: 0, output: 0, total: 0, cacheRead: 0, cacheCreated: 0 },
+          tokensUsed: {
+            input: teamResult.tokensUsed.input,
+            output: teamResult.tokensUsed.output,
+            total: teamResult.tokensUsed.total,
+            cost: teamResult.tokensUsed.cost,
+            cacheRead: 0,
+            cacheCreated: 0,
+          },
         })));
       } else {
+        // Normal / @direct — lead handles directly.
+        // In normal mode, inject run_team tool so lead can self-delegate.
+        const leadTeam = (!soloMode && this.teamCoordinator)
+          ? this.teamCoordinator.findTeamByLead(agentId)
+          : null;
+        const extraTools = leadTeam
+          ? [buildRunTeamTool({
+              teamCoordinator: this.teamCoordinator!,
+              defaultTeamId: leadTeam.id,
+              channelId,
+              peerId,
+            })]
+          : undefined;
+
         const result = await this.agentRuntime.run({
           userMessage: content,
           agentId,
           channelId,
           peerId,
           onProgress,
-          // Bind approval flow to THIS connection so the right client sees the prompt
-          // (handled via the executor.requestApproval — see requestApprovalFromActiveClient)
+          extraTools,
         });
 
         conn.ws.send(JSON.stringify(createMessage('chat:stream:end', {

@@ -24,4 +24,5 @@ export interface TeamRunResult {
   doneCount: number;
   failedCount: number;
   totalDurationMs: number;
+  tokensUsed: { input: number; output: number; total: number; cost: number };
 }

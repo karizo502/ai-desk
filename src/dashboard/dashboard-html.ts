@@ -2036,13 +2036,17 @@ function chatConnect(token) {
       }
       case 'chat:reply': {
         const p = msg.payload || {};
-        // If we have a streaming element still open (in case stream:end wasn't sent), close it
+        // If streaming happened, bubble already shows the content — just close it.
+        // If there's an open streaming bubble but no streamed content (e.g. team run),
+        // fill it with the reply content rather than leaving an empty ghost bubble.
         if (streamingMsgEl) {
+          if (!streamingContent) {
+            const bubble = streamingMsgEl.querySelector('.msg-bubble');
+            if (bubble) bubble.textContent = p.content || '';
+          }
           streamingMsgEl.classList.remove('streaming');
           streamingMsgEl = null;
-        }
-        // If no streaming happened (non-streaming agent), show reply now
-        if (!streamingContent) {
+        } else if (!streamingContent) {
           appendChatBubble('agent', p.content || '');
         }
         // Show token usage

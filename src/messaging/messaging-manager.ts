@@ -25,6 +25,7 @@ import type { ApprovalRequester } from '../agents/tool-executor.js';
 import type { ThreatDetector } from '../security/threat-detector.js';
 import type { MessagingConfig } from '../config/schema.js';
 import type { TeamCoordinator } from '../roles/team-coordinator.js';
+import { buildRunTeamTool } from '../roles/run-team-tool.js';
 import { eventBus } from '../shared/events.js';
 
 export interface MessagingManagerStatus {
@@ -259,9 +260,27 @@ export class MessagingManager {
   }
 
   private async dispatch(adapter: MessagingAdapter, msg: IncomingMessage): Promise<void> {
-    // @direct prefix bypasses team routing — lead agent answers directly
-    const bypassTeam = msg.text.startsWith('@direct ');
-    const text = bypassTeam ? msg.text.slice('@direct '.length) : msg.text;
+    // Routing modes (same as WebSocket gateway):
+    //   @direct <msg>       — lead handles alone, no run_team tool
+    //   @team <msg>         — force lead's primary team
+    //   @team/{id} <msg>    — force specific team by id
+    //   <msg>               — lead handles directly; run_team tool available
+    let text = msg.text;
+    let forceTeamId: string | null = null;
+    let soloMode = false;
+
+    if (msg.text.startsWith('@direct ')) {
+      text = msg.text.slice('@direct '.length);
+      soloMode = true;
+    } else if (msg.text.startsWith('@team/')) {
+      const rest = msg.text.slice('@team/'.length);
+      const spaceIdx = rest.indexOf(' ');
+      forceTeamId = spaceIdx === -1 ? rest : rest.slice(0, spaceIdx);
+      text = spaceIdx === -1 ? '' : rest.slice(spaceIdx + 1);
+    } else if (msg.text.startsWith('@team ')) {
+      text = msg.text.slice('@team '.length);
+      forceTeamId = '__lead__';
+    }
 
     // Per-adapter agent override takes priority over platform-level config
     const agentId = msg.agentIdHint
@@ -269,9 +288,15 @@ export class MessagingManager {
       ?? this.agentIdFor(msg.platform)
       ?? this.defaultAgentId;
 
-    // Route through TeamCoordinator if agent is a team lead (and not bypassed)
-    const team = (!bypassTeam && this.teamCoordinator)
-      ? this.teamCoordinator.findTeamByLead(agentId)
+    // Resolve __lead__ sentinel to actual team id
+    if (forceTeamId === '__lead__' && this.teamCoordinator) {
+      const leadTeam = this.teamCoordinator.findTeamByLead(agentId);
+      forceTeamId = leadTeam?.id ?? null;
+    }
+
+    // For forced team runs
+    const team = (forceTeamId && this.teamCoordinator)
+      ? this.teamCoordinator.listTeams().find(t => t.id === forceTeamId) ?? null
       : null;
 
     // Build a Telegram inline-keyboard approval requester when all conditions are met:
@@ -306,7 +331,11 @@ export class MessagingManager {
       let reply: string;
 
       if (team) {
-        const teamResult = await this.teamCoordinator!.run(team.id, text);
+        // @team / @team/{id} — force team delegation
+        const teamResult = await this.teamCoordinator!.run(team.id, text, {
+          channelId: msg.channelId,
+          peerId: msg.peerId,
+        });
         reply = teamResult.synthesis || '(no response)';
         clearInterval(typingTimer);
         await adapter.sendReply(msg.channelId, reply, msg.messageId);
@@ -314,16 +343,31 @@ export class MessagingManager {
           platform: msg.platform,
           channelId: msg.channelId,
           model: 'team',
-          tokens: 0,
+          tokens: teamResult.tokensUsed.total,
           durationMs: teamResult.totalDurationMs,
         });
       } else {
+        // Normal / @direct — lead handles directly.
+        // In normal mode, inject run_team so lead can self-delegate.
+        const leadTeam = (!soloMode && this.teamCoordinator)
+          ? this.teamCoordinator.findTeamByLead(agentId)
+          : null;
+        const extraTools = leadTeam
+          ? [buildRunTeamTool({
+              teamCoordinator: this.teamCoordinator!,
+              defaultTeamId: leadTeam.id,
+              channelId: msg.channelId,
+              peerId: msg.peerId,
+            })]
+          : undefined;
+
         const result = await this.runtime.run({
           userMessage: text,
           agentId,
           channelId: msg.channelId,
           peerId: msg.peerId,
           requestApproval,
+          extraTools,
           onProgress: (event) => {
             // Refresh typing on each agent step so it doesn't expire
             if (event.type === 'thinking' || event.type === 'tool_use') {
