@@ -83,10 +83,12 @@ export class TeamCoordinator {
       `Use "depends" to express task ordering (array of id strings). ` +
       `Keep prompts self-contained so agents don't need extra context.`;
 
+    // Use an ephemeral channel for decomposition so the JSON exchange
+    // doesn't pollute the team's conversation history for the direct response phase.
     const decompositionResult = await this.runtime.run({
       userMessage: decompositionPrompt,
       agentId: team.leadAgentId,
-      channelId: `team:${teamId}`,
+      channelId: `team:${teamId}:_decompose`,
       peerId: 'coordinator',
     });
 

@@ -301,8 +301,7 @@ export class ToolRegistry {
             url: { type: 'string', description: 'URL to fetch (https:// only)' },
             headers: {
               type: 'object',
-              description: 'Optional request headers',
-              additionalProperties: { type: 'string' },
+              description: 'Optional request headers as key-value pairs (e.g. { "Authorization": "Bearer ..." })',
             },
             max_bytes: { type: 'number', description: 'Max response bytes (default 102400, max 512000)' },
           },
