@@ -23,7 +23,6 @@ import {
 import type { CredentialStore } from '../auth/credential-store.js';
 import type { MessagingManager } from '../messaging/messaging-manager.js';
 
-const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
 export class CredentialRoutes {
   private store: CredentialStore;
@@ -216,47 +215,46 @@ export class CredentialRoutes {
 
   private async handleImportGeminiCli(res: ServerResponse): Promise<void> {
     const creds = readGeminiCliCredentials();
-    if (!creds) {
+    if (!creds?.accessToken) {
       this.error(res, 404,
-        'Gemini CLI credentials not found. Install Gemini CLI and run `gemini auth login` first.'
+        'Gemini CLI credentials not found. Install Gemini CLI or Antigravity and sign in first.'
       );
       return;
     }
 
-    let accessToken  = creds.accessToken  ?? '';
-    let expiresAt    = creds.expiresAt    ?? 0;
-    const refreshToken  = creds.refreshToken  ?? '';
-    const clientId      = creds.clientId      ?? '';
-    const clientSecret  = creds.clientSecret  ?? '';
+    const accessToken  = creds.accessToken;
+    const expiresAt    = creds.expiresAt ?? Date.now() + 3600_000;
+    const refreshToken = creds.refreshToken ?? '';
 
-    // If access token is missing or expired, refresh immediately
-    const needsRefresh = !accessToken || (expiresAt && Date.now() >= expiresAt - 5 * 60 * 1000);
-    if (needsRefresh && refreshToken && clientId && clientSecret) {
-      try {
-        const resp = await fetch(GOOGLE_TOKEN_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            client_id:     clientId,
-            client_secret: clientSecret,
-            refresh_token: refreshToken,
-            grant_type:    'refresh_token',
-          }),
-        });
-        const data = await resp.json() as { access_token?: string; expires_in?: number; error?: string };
-        if (data.access_token) {
-          accessToken = data.access_token;
-          expiresAt   = Date.now() + ((data.expires_in ?? 3600) * 1000);
-        }
-      } catch { /* use existing token as-is */ }
-    }
-
-    if (!accessToken) {
-      this.error(res, 400, 'Could not obtain a valid access token from Gemini CLI credentials.');
+    // Discover the user's Code Assist project ID via :loadCodeAssist
+    let projectId: string | undefined;
+    try {
+      const loadResp = await fetch('https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cloudaicompanionProject: 'default',
+          metadata: { ideType: 'IDE_UNSPECIFIED', platform: 'PLATFORM_UNSPECIFIED', pluginType: 'GEMINI' },
+        }),
+      });
+      if (loadResp.ok) {
+        const data = await loadResp.json() as { cloudaicompanionProject?: string };
+        projectId = data.cloudaicompanionProject;
+      } else {
+        const text = await loadResp.text();
+        this.error(res, 502, `Code Assist enrolment failed (HTTP ${loadResp.status}): ${text.slice(0, 200)}`);
+        return;
+      }
+    } catch (err) {
+      this.error(res, 502, `Code Assist discovery failed: ${(err as Error).message}`);
       return;
     }
 
-    // Fetch email to display in UI
+    if (!projectId) {
+      this.error(res, 502, 'Code Assist did not return a project ID. Try signing in via Gemini CLI again.');
+      return;
+    }
+
     let email: string | undefined;
     try {
       const userResp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
@@ -266,16 +264,16 @@ export class CredentialRoutes {
     } catch { /* email is optional */ }
 
     this.store.set('google', {
-      type:         'oauth',
+      type: 'oauth',
       accessToken,
       refreshToken,
-      expiresAt:    expiresAt || Date.now() + 3600_000,
+      expiresAt,
       email,
-      clientId:     clientId  || undefined,
-      clientSecret: clientSecret || undefined,
+      projectId,
+      useCodeAssist: true,
     });
 
-    this.json(res, { ok: true, email });
+    this.json(res, { ok: true, email, projectId });
   }
 
   // ─── helpers ────────────────────────────────────────────────────────────────

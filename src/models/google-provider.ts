@@ -18,6 +18,7 @@ import {
 import type { CredentialStore } from '../auth/credential-store.js';
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const CODE_ASSIST_URL = 'https://cloudcode-pa.googleapis.com/v1internal:generateContent';
 
 const PRICING: Record<string, { inputPer1M: number; outputPer1M: number }> = {
   'gemini-2.5-pro': { inputPer1M: 1.25, outputPer1M: 10.0 },
@@ -79,6 +80,8 @@ export class GoogleProvider extends ModelProvider {
   async call(options: ModelCallOptions): Promise<ModelCallResult> {
     // Resolve credential: OAuth first (auto-refreshed), then API key, then env var
     const oauthToken = this.credStore ? await this.credStore.getValidGoogleAccessToken() : undefined;
+    const codeAssist = this.credStore?.getGoogleCodeAssistInfo();
+    const useCodeAssist = !!(oauthToken && codeAssist?.useCodeAssist && codeAssist.projectId);
     const storedApiKey = this.credStore?.getApiKey('google');
     const effectiveApiKey = storedApiKey ?? this.apiKey;
 
@@ -94,12 +97,7 @@ export class GoogleProvider extends ModelProvider {
     const startTime = Date.now();
     const modelId = options.model.replace(/^google\//, '');
 
-    // OAuth uses Bearer token in header; API key uses query param
-    const url = oauthToken
-      ? `${API_BASE}/${modelId}:generateContent`
-      : `${API_BASE}/${modelId}:generateContent?key=${encodeURIComponent(effectiveApiKey)}`;
-
-    const body: Record<string, unknown> = {
+    const innerRequest: Record<string, unknown> = {
       contents: this.toGeminiContents(options.messages),
       generationConfig: {
         maxOutputTokens: options.maxTokens ?? 4096,
@@ -108,17 +106,31 @@ export class GoogleProvider extends ModelProvider {
     };
 
     if (options.systemPrompt) {
-      body.systemInstruction = { parts: [{ text: options.systemPrompt }] };
+      innerRequest.systemInstruction = { parts: [{ text: options.systemPrompt }] };
     }
 
     if (options.tools && options.tools.length > 0) {
-      body.tools = [{
+      innerRequest.tools = [{
         functionDeclarations: options.tools.map(t => ({
           name: t.name,
           description: t.description,
           parameters: t.inputSchema,
         })),
       }];
+    }
+
+    // Choose endpoint + body shape based on auth method
+    let url: string;
+    let body: Record<string, unknown>;
+    if (useCodeAssist) {
+      url = CODE_ASSIST_URL;
+      body = { model: modelId, project: codeAssist!.projectId, request: innerRequest };
+    } else if (oauthToken) {
+      url = `${API_BASE}/${modelId}:generateContent`;
+      body = innerRequest;
+    } else {
+      url = `${API_BASE}/${modelId}:generateContent?key=${encodeURIComponent(effectiveApiKey)}`;
+      body = innerRequest;
     }
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -154,7 +166,9 @@ export class GoogleProvider extends ModelProvider {
 
     let parsed: GeminiResponse;
     try {
-      parsed = JSON.parse(text);
+      const raw = JSON.parse(text) as GeminiResponse | { response: GeminiResponse };
+      // Code Assist wraps the standard Gemini response under `response`
+      parsed = 'response' in raw && raw.response ? raw.response : (raw as GeminiResponse);
     } catch {
       throw new ProviderError(`Invalid JSON: ${text.slice(0, 200)}`, this.name, modelId, false);
     }

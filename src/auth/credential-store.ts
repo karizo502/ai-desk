@@ -23,7 +23,7 @@ export type AnthropicCredential =
 
 export type GoogleCredential =
   | { type: 'api_key'; apiKey: string }
-  | { type: 'oauth'; accessToken: string; refreshToken: string; expiresAt: number; email?: string; clientId?: string; clientSecret?: string };
+  | { type: 'oauth'; accessToken: string; refreshToken: string; expiresAt: number; email?: string; clientId?: string; clientSecret?: string; projectId?: string; useCodeAssist?: boolean };
 
 export type OpenRouterCredential = { type: 'api_key'; apiKey: string };
 
@@ -225,11 +225,21 @@ export class CredentialStore {
     const needsRefresh = Date.now() >= cred.expiresAt - TOKEN_REFRESH_BUFFER_MS;
     if (!needsRefresh) return cred.accessToken;
 
-    if (!cred.refreshToken) return cred.accessToken; // no refresh token — use as-is
+    // Fallback path 1: re-read Gemini CLI file — the CLI/Antigravity refreshes it for us
+    if (cred.useCodeAssist) {
+      const fresh = readGeminiCliCredentials();
+      if (fresh?.accessToken && fresh.expiresAt && Date.now() < fresh.expiresAt - TOKEN_REFRESH_BUFFER_MS) {
+        this.set('google', { ...cred, accessToken: fresh.accessToken, expiresAt: fresh.expiresAt });
+        return fresh.accessToken;
+      }
+    }
 
+    if (!cred.refreshToken) return cred.accessToken;
+
+    // Fallback path 2: standard OAuth refresh using stored client credentials
     const clientId     = process.env.GOOGLE_CLIENT_ID     ?? cred.clientId     ?? '';
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET ?? cred.clientSecret ?? '';
-    if (!clientId || !clientSecret) return cred.accessToken; // can't refresh without client creds
+    if (!clientId || !clientSecret) return cred.accessToken;
 
     try {
       const resp = await fetch(GOOGLE_TOKEN_URL, {
@@ -259,6 +269,13 @@ export class CredentialStore {
     }
 
     return cred.accessToken;
+  }
+
+  /** Returns Code Assist info for a stored Google OAuth credential */
+  getGoogleCodeAssistInfo(): { projectId?: string; useCodeAssist: boolean } | undefined {
+    const cred = this.get('google') as GoogleCredential | null;
+    if (!cred || cred.type !== 'oauth') return undefined;
+    return { projectId: cred.projectId, useCodeAssist: !!cred.useCodeAssist };
   }
 
   close(): void {

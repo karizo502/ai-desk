@@ -16,6 +16,8 @@ import { readClaudeCodeCredentials, type CredentialStore } from '../auth/credent
 
 const API_URL     = 'https://api.anthropic.com/v1/messages';
 const API_VERSION = '2023-06-01';
+const OAUTH_BETA  = 'oauth-2025-04-20';
+const CLAUDE_CODE_SYSTEM = "You are Claude Code, Anthropic's official CLI for Claude.";
 
 const PRICING: Record<string, { inputPer1M: number; outputPer1M: number }> = {
   'claude-opus-4-7': { inputPer1M: 15.0, outputPer1M: 75.0 },
@@ -126,11 +128,21 @@ export class AnthropicProvider extends ModelProvider {
     const startTime = Date.now();
     const modelId   = options.model.replace(/^anthropic\//, '');
 
+    // OAuth requires the system prompt to start with the Claude Code identifier.
+    // We send `system` as an array so the user's prompt is preserved as a separate block.
+    const systemField: unknown =
+      auth.mode === 'oauth'
+        ? [
+            { type: 'text', text: CLAUDE_CODE_SYSTEM },
+            ...(options.systemPrompt ? [{ type: 'text', text: options.systemPrompt }] : []),
+          ]
+        : options.systemPrompt;
+
     const body = {
       model:       modelId,
       max_tokens:  options.maxTokens  ?? 4096,
       temperature: options.temperature ?? 0.7,
-      ...(options.systemPrompt ? { system: options.systemPrompt } : {}),
+      ...(systemField ? { system: systemField } : {}),
       messages: this.toAnthropicMessages(options.messages),
       ...(options.tools && options.tools.length > 0 ? {
         tools: options.tools.map(t => ({
@@ -141,9 +153,9 @@ export class AnthropicProvider extends ModelProvider {
       } : {}),
     };
 
-    // Build auth headers — api_key uses x-api-key; OAuth uses Authorization: Bearer
+    // Build auth headers — api_key uses x-api-key; OAuth uses Authorization: Bearer + beta flag
     const authHeaders: Record<string, string> = auth.mode === 'oauth'
-      ? { 'Authorization': `Bearer ${auth.token}` }
+      ? { 'Authorization': `Bearer ${auth.token}`, 'anthropic-beta': OAUTH_BETA }
       : { 'x-api-key': auth.token };
 
     let response: Response;
