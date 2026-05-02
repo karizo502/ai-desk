@@ -37,6 +37,13 @@ export class TeamCoordinator {
     return [...this.roles.values()];
   }
 
+  findTeamByLead(agentId: string): TeamDefinition | null {
+    for (const team of this.teams.values()) {
+      if (team.leadAgentId === agentId) return team;
+    }
+    return null;
+  }
+
   async run(teamId: string, goal: string): Promise<TeamRunResult> {
     const start = Date.now();
     const team = this.teams.get(teamId);
@@ -69,7 +76,8 @@ export class TeamCoordinator {
       `You are the lead coordinator of team "${team.name}".${sharedGoalNote}\n\n` +
       `Your team members:\n${memberContext}\n\n` +
       `Goal: ${goal}\n\n` +
-      `Break this goal into concrete tasks for your team members. ` +
+      `If the goal is conversational (a greeting, simple question, or something you can answer directly without team collaboration), reply with an empty JSON array: []\n\n` +
+      `Otherwise, break this goal into concrete tasks for your team members. ` +
       `Reply with ONLY a valid JSON array (no markdown fences, no explanation) matching this schema:\n` +
       `[{ "id": "t1", "agentId": "<agentId>", "prompt": "<task prompt>", "label": "<short label>", "depends": [] }]\n` +
       `Use "depends" to express task ordering (array of id strings). ` +
@@ -117,7 +125,7 @@ export class TeamCoordinator {
         if (match) cleaned = match[0];
       }
       tasks = JSON.parse(cleaned) as TaskDefinition[];
-      if (!Array.isArray(tasks) || tasks.length === 0) throw new Error('empty task array');
+      if (!Array.isArray(tasks)) throw new Error('decomposition did not return a JSON array');
     } catch (err) {
       const errMsg = `Lead agent returned invalid task JSON: ${(err as Error).message}`;
       eventBus.emit('task:failed', { taskId: `${teamId}:__decompose__`, agentId: team.leadAgentId, teamId,
@@ -139,6 +147,26 @@ export class TeamCoordinator {
     // Decomposition succeeded
     eventBus.emit('task:done', { taskId: `${teamId}:__decompose__`, agentId: team.leadAgentId, teamId,
       durationMs: decompositionResult.durationMs });
+
+    // Empty task list = lead handles this directly (conversational/trivial goal, no team delegation needed)
+    if (tasks.length === 0) {
+      const directResult = await this.runtime.run({
+        userMessage: goal,
+        agentId: team.leadAgentId,
+        channelId: `team:${teamId}`,
+        peerId: 'coordinator',
+      });
+      const synthesis = directResult.success ? directResult.content : `Error: ${directResult.error}`;
+      const directRunResult: TeamRunResult = {
+        teamId, teamName: team.name, goal,
+        success: directResult.success,
+        synthesis,
+        taskCount: 0, doneCount: 0, failedCount: 0,
+        totalDurationMs: Date.now() - start,
+      };
+      eventBus.emit('team:complete', { teamId, teamName: team.name, success: directRunResult.success, durationMs: directRunResult.totalDurationMs });
+      return directRunResult;
+    }
 
     // Announce the discovered tasks so WorkspaceTracker can pre-populate them
     for (const task of tasks) {

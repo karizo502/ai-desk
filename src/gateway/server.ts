@@ -335,6 +335,7 @@ export class GatewayServer {
               runtime: this.agentRuntime,
               threat: this.threatDetector,
               defaultAgentId: this.defaultAgentId(),
+              teamCoordinator: this.teamCoordinator ?? undefined,
             });
             const msgStatuses = await this.messagingManager.startAll();
             this.messagingStatuses = msgStatuses.map(s => ({ platform: s.platform, running: s.running }));
@@ -358,6 +359,7 @@ export class GatewayServer {
               runtime: this.agentRuntime,
               threat: this.threatDetector,
               defaultAgentId: this.defaultAgentId(),
+              teamCoordinator: this.teamCoordinator ?? undefined,
             });
           }
           // Wire messaging manager into dashboard so hot-connect routes work
@@ -763,10 +765,18 @@ export class GatewayServer {
       channelId?: string;
       peerId?: string;
     };
-    const content = payload.content ?? '';
+    const rawContent = payload.content ?? '';
+    // @direct prefix bypasses team routing — lead agent answers directly
+    const bypassTeam = rawContent.startsWith('@direct ');
+    const content = bypassTeam ? rawContent.slice('@direct '.length) : rawContent;
     const agentId = payload.agentId ?? this.defaultAgentId();
     const channelId = payload.channelId ?? `conn:${connectionId}`;
     const peerId = payload.peerId ?? `conn:${connectionId}`;
+
+    // Route through TeamCoordinator if agent is a team lead (and not bypassed)
+    const team = (!bypassTeam && this.teamCoordinator)
+      ? this.teamCoordinator.findTeamByLead(agentId)
+      : null;
 
     eventBus.emit('message:received', {
       connectionId,
@@ -790,30 +800,49 @@ export class GatewayServer {
     };
 
     try {
-      const result = await this.agentRuntime.run({
-        userMessage: content,
-        agentId,
-        channelId,
-        peerId,
-        onProgress,
-        // Bind approval flow to THIS connection so the right client sees the prompt
-        // (handled via the executor.requestApproval — see requestApprovalFromActiveClient)
-      });
+      if (team) {
+        onProgress({ type: 'thinking' } as AgentProgressEvent);
+        const teamResult = await this.teamCoordinator!.run(team.id, content);
 
-      conn.ws.send(JSON.stringify(createMessage('chat:stream:end', {
-        sessionId: result.sessionId,
-        done: true,
-      })));
+        conn.ws.send(JSON.stringify(createMessage('chat:stream:end', {
+          sessionId,
+          done: true,
+        })));
+        conn.ws.send(JSON.stringify(createMessage('chat:reply', {
+          content: teamResult.success
+            ? teamResult.synthesis
+            : `[Team Error] ${teamResult.synthesis}`,
+          agentId,
+          sessionId,
+          model: 'team',
+          tokensUsed: { input: 0, output: 0, total: 0, cacheRead: 0, cacheCreated: 0 },
+        })));
+      } else {
+        const result = await this.agentRuntime.run({
+          userMessage: content,
+          agentId,
+          channelId,
+          peerId,
+          onProgress,
+          // Bind approval flow to THIS connection so the right client sees the prompt
+          // (handled via the executor.requestApproval — see requestApprovalFromActiveClient)
+        });
 
-      conn.ws.send(JSON.stringify(createMessage('chat:reply', {
-        content: result.success
-          ? result.content
-          : `[Error] ${result.error}`,
-        agentId: result.agentId,
-        sessionId: result.sessionId,
-        model: result.model,
-        tokensUsed: result.tokensUsed,
-      })));
+        conn.ws.send(JSON.stringify(createMessage('chat:stream:end', {
+          sessionId: result.sessionId,
+          done: true,
+        })));
+
+        conn.ws.send(JSON.stringify(createMessage('chat:reply', {
+          content: result.success
+            ? result.content
+            : `[Error] ${result.error}`,
+          agentId: result.agentId,
+          sessionId: result.sessionId,
+          model: result.model,
+          tokensUsed: result.tokensUsed,
+        })));
+      }
     } catch (err) {
       conn.ws.send(JSON.stringify(createMessage('error', {
         error: `Agent run failed: ${(err as Error).message}`,

@@ -24,6 +24,7 @@ import type { AgentRuntime } from '../agents/agent-runtime.js';
 import type { ApprovalRequester } from '../agents/tool-executor.js';
 import type { ThreatDetector } from '../security/threat-detector.js';
 import type { MessagingConfig } from '../config/schema.js';
+import type { TeamCoordinator } from '../roles/team-coordinator.js';
 import { eventBus } from '../shared/events.js';
 
 export interface MessagingManagerStatus {
@@ -49,17 +50,20 @@ export class MessagingManager {
   private namedAdapters = new Map<string, MessagingAdapter>();
   /** Adapter instance → agentId override (for per-agent routing) */
   private adapterAgents = new Map<MessagingAdapter, string>();
+  private teamCoordinator: TeamCoordinator | null = null;
 
   constructor(opts: {
     config: MessagingConfig;
     runtime: AgentRuntime;
     threat: ThreatDetector;
     defaultAgentId: string;
+    teamCoordinator?: TeamCoordinator;
   }) {
     this.config = opts.config;
     this.runtime = opts.runtime;
     this.threat = opts.threat;
     this.defaultAgentId = opts.defaultAgentId;
+    this.teamCoordinator = opts.teamCoordinator ?? null;
   }
 
   async startAll(): Promise<MessagingManagerStatus[]> {
@@ -255,11 +259,20 @@ export class MessagingManager {
   }
 
   private async dispatch(adapter: MessagingAdapter, msg: IncomingMessage): Promise<void> {
+    // @direct prefix bypasses team routing — lead agent answers directly
+    const bypassTeam = msg.text.startsWith('@direct ');
+    const text = bypassTeam ? msg.text.slice('@direct '.length) : msg.text;
+
     // Per-adapter agent override takes priority over platform-level config
     const agentId = msg.agentIdHint
       ?? this.adapterAgents.get(adapter)
       ?? this.agentIdFor(msg.platform)
       ?? this.defaultAgentId;
+
+    // Route through TeamCoordinator if agent is a team lead (and not bypassed)
+    const team = (!bypassTeam && this.teamCoordinator)
+      ? this.teamCoordinator.findTeamByLead(agentId)
+      : null;
 
     // Build a Telegram inline-keyboard approval requester when all conditions are met:
     //   1. Message came from Telegram
@@ -290,35 +303,51 @@ export class MessagingManager {
     );
 
     try {
-      const result = await this.runtime.run({
-        userMessage: msg.text,
-        agentId,
-        channelId: msg.channelId,
-        peerId: msg.peerId,
-        requestApproval,
-        onProgress: (event) => {
-          // Refresh typing on each agent step so it doesn't expire
-          if (event.type === 'thinking' || event.type === 'tool_use') {
-            adapter.sendTyping(msg.channelId).catch(() => {});
-          }
-        },
-      });
+      let reply: string;
 
-      clearInterval(typingTimer);
+      if (team) {
+        const teamResult = await this.teamCoordinator!.run(team.id, text);
+        reply = teamResult.synthesis || '(no response)';
+        clearInterval(typingTimer);
+        await adapter.sendReply(msg.channelId, reply, msg.messageId);
+        eventBus.emit('messaging:replied', {
+          platform: msg.platform,
+          channelId: msg.channelId,
+          model: 'team',
+          tokens: 0,
+          durationMs: teamResult.totalDurationMs,
+        });
+      } else {
+        const result = await this.runtime.run({
+          userMessage: text,
+          agentId,
+          channelId: msg.channelId,
+          peerId: msg.peerId,
+          requestApproval,
+          onProgress: (event) => {
+            // Refresh typing on each agent step so it doesn't expire
+            if (event.type === 'thinking' || event.type === 'tool_use') {
+              adapter.sendTyping(msg.channelId).catch(() => {});
+            }
+          },
+        });
 
-      const reply = result.success
-        ? result.content || '(no response)'
-        : `⚠️ ${result.error ?? 'Something went wrong.'}`;
+        clearInterval(typingTimer);
 
-      await adapter.sendReply(msg.channelId, reply, msg.messageId);
+        reply = result.success
+          ? result.content || '(no response)'
+          : `⚠️ ${result.error ?? 'Something went wrong.'}`;
 
-      eventBus.emit('messaging:replied', {
-        platform: msg.platform,
-        channelId: msg.channelId,
-        model: result.model,
-        tokens: result.tokensUsed.total,
-        durationMs: result.durationMs,
-      });
+        await adapter.sendReply(msg.channelId, reply, msg.messageId);
+
+        eventBus.emit('messaging:replied', {
+          platform: msg.platform,
+          channelId: msg.channelId,
+          model: result.model,
+          tokens: result.tokensUsed.total,
+          durationMs: result.durationMs,
+        });
+      }
     } catch (err) {
       clearInterval(typingTimer);
       const errMsg = (err as Error).message;
