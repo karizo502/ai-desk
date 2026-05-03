@@ -27,6 +27,7 @@ export interface ToolContext {
   agentId: string;
   runId: string;
   sandbox: SandboxManager;
+  onFileWrite?: (event: { relativePath: string; bytes: number }) => void;
 }
 
 export interface RegisteredTool {
@@ -168,6 +169,7 @@ export class ToolRegistry {
         try {
           await mkdir(dirname(path), { recursive: true });
           await writeFile(path, content, { encoding: 'utf-8', flag: append ? 'a' : 'w' });
+          ctx.onFileWrite?.({ relativePath: String(input.path), bytes: content.length });
           return { output: `Written ${content.length} chars to ${input.path}` };
         } catch (err) {
           return { output: `Error: ${(err as Error).message}`, isError: true };
@@ -371,11 +373,28 @@ export class ToolRegistry {
         if (!command) return { output: 'Error: empty command', isError: true };
         const args = Array.isArray(input.args) ? input.args.map(String) : [];
 
+        // Snapshot workspace before command (for artifact tracking)
+        const beforeSnap = ctx.onFileWrite ? await snapshotDir(ctx.workspace) : new Map<string, number>();
+
         const result = await ctx.sandbox.execute(`${ctx.runId}-exec`, {
           command,
           args,
           cwd: ctx.workspace,
         });
+
+        // Detect new/modified files and emit onFileWrite for each
+        if (ctx.onFileWrite && beforeSnap.size < SNAPSHOT_MAX_FILES) {
+          const afterSnap = await snapshotDir(ctx.workspace);
+          const changed = diffSnapshots(beforeSnap, afterSnap);
+          const wsAbs = resolve(ctx.workspace);
+          for (const absPath of changed) {
+            const rel = absPath.startsWith(wsAbs) ? absPath.slice(wsAbs.length).replace(/^[/\\]/, '') : absPath;
+            try {
+              const s = await stat(absPath);
+              ctx.onFileWrite({ relativePath: rel, bytes: s.size });
+            } catch { /* file may have been deleted */ }
+          }
+        }
 
         const out =
           `exit=${result.exitCode} duration=${result.durationMs}ms timedOut=${result.timedOut}\n` +
@@ -393,4 +412,42 @@ function resolveSafe(workspace: string, requested: string): string | null {
   const target = isAbsolute(requested) ? normalize(requested) : resolve(wsAbs, requested);
   if (!target.startsWith(wsAbs)) return null;
   return target;
+}
+
+const SNAPSHOT_IGNORE = new Set(['node_modules', '.git', '.svn', '__pycache__', '.venv', 'dist', 'build']);
+const SNAPSHOT_MAX_FILES = 500;
+const SNAPSHOT_MAX_DEPTH = 5;
+
+/** Snapshot file mtime map for a directory (for exec_command change detection) */
+export async function snapshotDir(dir: string, depth = 0): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (depth > SNAPSHOT_MAX_DEPTH || map.size > SNAPSHOT_MAX_FILES) return map;
+  try {
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const e of entries) {
+      if (SNAPSHOT_IGNORE.has(e.name)) continue;
+      const full = resolve(dir, e.name);
+      if (e.isDirectory()) {
+        const sub = await snapshotDir(full, depth + 1);
+        for (const [k, v] of sub) map.set(k, v);
+      } else {
+        try {
+          const s = await stat(full);
+          map.set(full, s.mtimeMs);
+        } catch { /* ignore */ }
+      }
+      if (map.size >= SNAPSHOT_MAX_FILES) break;
+    }
+  } catch { /* ignore unreadable dirs */ }
+  return map;
+}
+
+/** Diff two snapshots — returns paths that are new or modified */
+export function diffSnapshots(before: Map<string, number>, after: Map<string, number>): string[] {
+  const changed: string[] = [];
+  for (const [path, mtime] of after) {
+    const prev = before.get(path);
+    if (prev === undefined || prev !== mtime) changed.push(path);
+  }
+  return changed;
 }

@@ -37,9 +37,20 @@ export interface TaskNode {
 export class TaskGraph {
   private nodes = new Map<string, TaskNode>();
 
-  constructor(tasks: TaskDefinition[]) {
+  constructor(
+    tasks: TaskDefinition[],
+    /** Pre-seed results for already-completed tasks (used when resuming a run) */
+    completedResults?: Record<string, string>,
+  ) {
     for (const def of tasks) {
-      this.nodes.set(def.id, { def, status: 'pending' });
+      const preResult = completedResults?.[def.id];
+      if (preResult !== undefined) {
+        // Mark as already done so dependents can proceed immediately
+        const now = Date.now();
+        this.nodes.set(def.id, { def, status: 'done', result: preResult, startedAt: now, completedAt: now, durationMs: 0 });
+      } else {
+        this.nodes.set(def.id, { def, status: 'pending' });
+      }
     }
     this.validate();
   }

@@ -25,6 +25,8 @@ import type { ApprovalRequester } from '../agents/tool-executor.js';
 import type { ThreatDetector } from '../security/threat-detector.js';
 import type { MessagingConfig } from '../config/schema.js';
 import type { TeamCoordinator } from '../roles/team-coordinator.js';
+import type { ProjectStore } from '../projects/project-store.js';
+import type { IssueStore } from '../projects/issue-store.js';
 import { buildRunTeamTool } from '../roles/run-team-tool.js';
 import { eventBus } from '../shared/events.js';
 
@@ -52,6 +54,8 @@ export class MessagingManager {
   /** Adapter instance → agentId override (for per-agent routing) */
   private adapterAgents = new Map<MessagingAdapter, string>();
   private teamCoordinator: TeamCoordinator | null = null;
+  private projectStore: ProjectStore | null = null;
+  private issueStore: IssueStore | null = null;
 
   constructor(opts: {
     config: MessagingConfig;
@@ -59,12 +63,16 @@ export class MessagingManager {
     threat: ThreatDetector;
     defaultAgentId: string;
     teamCoordinator?: TeamCoordinator;
+    projectStore?: ProjectStore;
+    issueStore?: IssueStore;
   }) {
     this.config = opts.config;
     this.runtime = opts.runtime;
     this.threat = opts.threat;
     this.defaultAgentId = opts.defaultAgentId;
     this.teamCoordinator = opts.teamCoordinator ?? null;
+    this.projectStore = opts.projectStore ?? null;
+    this.issueStore = opts.issueStore ?? null;
   }
 
   async startAll(): Promise<MessagingManagerStatus[]> {
@@ -294,6 +302,13 @@ export class MessagingManager {
       forceTeamId = leadTeam?.id ?? null;
     }
 
+    // ── @project commands — handled before typing / lock ──────────────────────
+    if (msg.text.startsWith('@project ') || msg.text === '@project') {
+      const projectReply = await this.handleProjectCommand(msg.text, agentId, forceTeamId);
+      await adapter.sendReply(msg.channelId, projectReply, msg.messageId);
+      return;
+    }
+
     // For forced team runs
     const team = (forceTeamId && this.teamCoordinator)
       ? this.teamCoordinator.listTeams().find(t => t.id === forceTeamId) ?? null
@@ -399,6 +414,98 @@ export class MessagingManager {
       await adapter.sendReply(msg.channelId, `⚠️ Internal error: ${errMsg}`, msg.messageId)
         .catch(() => {});
     }
+  }
+
+  // ─── @project command handler ─────────────────────────────────────────────
+
+  private async handleProjectCommand(
+    rawText: string,
+    agentId: string,
+    forceTeamId: string | null,
+  ): Promise<string> {
+    if (!this.projectStore || !this.teamCoordinator) {
+      return '⚠️ Project tracking is not enabled (no teams configured).';
+    }
+
+    // Derive teamId — prefer explicit override, then lead's team
+    const teamId = forceTeamId
+      ?? this.teamCoordinator.findTeamByLead(agentId)?.id
+      ?? null;
+
+    const parts = rawText.trim().split(/\s+/);
+    const sub = parts[1] ?? '';
+
+    if (!sub || sub === 'list') {
+      // @project list — show active projects for this team
+      if (!teamId) return '⚠️ Could not determine team — use @team/id first.';
+      const projects = this.projectStore.listAll(20).filter(p => p.teamId === teamId);
+      if (projects.length === 0) return 'No projects found for this team. Start a @team run to create one.';
+      const lines = projects.map(p => {
+        const icon = p.status === 'archived' ? '📦' : '📁';
+        return `${icon} \`${p.id}\` **${p.name}** — ${p.workspacePath}`;
+      });
+      return `**Projects (${projects.length})**\n${lines.join('\n')}\n\nUse \`@project switch <id>\` to set the active project.`;
+    }
+
+    if (sub === 'switch') {
+      const id = parts[2] ?? '';
+      if (!id) return 'Usage: `@project switch <project-id>`';
+      const project = this.projectStore.getProject(id);
+      if (!project) return `⚠️ Project \`${id}\` not found.`;
+      this.projectStore.touchProject(id);
+      return `✅ Switched to project **${project.name}** (\`${id}\`). Future @team runs for this team will continue under this project.`;
+    }
+
+    if (sub === 'archive') {
+      if (!teamId) return '⚠️ Could not determine team.';
+      const active = this.projectStore.findActiveByTeam(teamId);
+      if (!active) return '⚠️ No active project to archive.';
+      this.projectStore.archive(active.id);
+      return `📦 Archived project **${active.name}** (\`${active.id}\`). Next @team run will start a new project.`;
+    }
+
+    if (sub === 'issues') {
+      if (!this.issueStore) return '⚠️ Issue tracking not available.';
+      if (!teamId) return '⚠️ Could not determine team.';
+      const active = this.projectStore.findActiveByTeam(teamId);
+      if (!active) return '⚠️ No active project.';
+      const issues = this.issueStore.listOpen(active.id);
+      if (issues.length === 0) return `No open issues for **${active.name}**.`;
+      const lines = issues.map(iss => {
+        const icon = iss.kind === 'bug' ? '🐛' : iss.kind === 'feature_request' ? '✨' : '❓';
+        return `${icon} \`${iss.id}\` **${iss.title}**${iss.body ? `\n   ${iss.body.slice(0, 120)}` : ''}`;
+      });
+      return `**Open Issues — ${active.name}** (${issues.length})\n${lines.join('\n')}`;
+    }
+
+    if (sub === 'show') {
+      const id = parts[2] ?? (teamId ? this.projectStore.findActiveByTeam(teamId)?.id ?? '' : '');
+      if (!id) return 'Usage: `@project show <project-id>` or have an active project.';
+      const project = this.projectStore.getProject(id);
+      if (!project) return `⚠️ Project \`${id}\` not found.`;
+      const artifacts = this.projectStore.listArtifacts(id);
+      const runs = this.projectStore.listRunsByProject(id, 5);
+      const runLines = runs.map(r => {
+        const icon = r.status === 'done' ? '✓' : r.status === 'failed' ? '✗' : '…';
+        return `[${icon}] ${r.kind}: ${r.goal.slice(0, 60)}`;
+      });
+      return [
+        `**${project.name}** (\`${project.id}\`)`,
+        `Path: ${project.workspacePath}`,
+        project.brief ? `\n${project.brief.slice(0, 300)}` : '',
+        artifacts.length > 0 ? `\n**Artifacts (${artifacts.length}):** ${artifacts.slice(0, 5).map(a => a.path).join(', ')}` : '',
+        runs.length > 0 ? `\n**Recent Runs:**\n${runLines.join('\n')}` : '',
+      ].filter(Boolean).join('\n');
+    }
+
+    return [
+      '**@project commands:**',
+      '  `@project list` — list all projects for this team',
+      '  `@project show [id]` — show active project details',
+      '  `@project switch <id>` — set active project',
+      '  `@project archive` — archive current project',
+      '  `@project issues` — list open issues',
+    ].join('\n');
   }
 
   private agentIdFor(platform: 'telegram' | 'discord'): string | undefined {

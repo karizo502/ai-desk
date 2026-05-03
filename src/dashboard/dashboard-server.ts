@@ -24,6 +24,7 @@ import type { CronScheduler } from './cron-scheduler.js';
 import { SessionRoutes } from './session-routes.js';
 import type { SessionStore } from '../sessions/session-store.js';
 import { ConnectionRoutes } from './connection-routes.js';
+import { ProjectRoutes } from './project-routes.js';
 import type { ConnectionStore } from './connection-store.js';
 import { eventBus } from '../shared/events.js';
 import type { CredentialStore } from '../auth/credential-store.js';
@@ -31,6 +32,9 @@ import type { AuthManager } from '../auth/auth-manager.js';
 import type { AuditLog } from '../security/audit-log.js';
 import { WorkspaceTracker } from '../workspace/workspace-tracker.js';
 import { WorkspaceRoutes } from '../workspace/workspace-routes.js';
+import type { ProjectStore } from '../projects/project-store.js';
+import type { IssueStore } from '../projects/issue-store.js';
+import type { TeamCoordinator } from '../roles/team-coordinator.js';
 
 export interface AgentSnapshot {
   id: string;
@@ -110,6 +114,7 @@ export class DashboardServer {
   private cronRoutes: CronRoutes | null = null;
   private sessionRoutes: SessionRoutes | null = null;
   private connectionRoutes: ConnectionRoutes | null = null;
+  private projectRoutes: ProjectRoutes | null = null;
   private auditLog: AuditLog | null = null;
   private workspaceTracker: WorkspaceTracker;
   private workspaceRoutes: WorkspaceRoutes;
@@ -129,6 +134,9 @@ export class DashboardServer {
       cronScheduler?: CronScheduler;
       sessionStore?: SessionStore;
       connectionStore?: ConnectionStore;
+      projectStore?: ProjectStore;
+      issueStore?: IssueStore;
+      teamCoordinator?: TeamCoordinator;
     },
   ) {
     this.snapshotFn = snapshotFn;
@@ -162,6 +170,13 @@ export class DashboardServer {
     if (opts?.connectionStore) {
       this.connectionRoutes = new ConnectionRoutes(opts.connectionStore);
     }
+    if (opts?.projectStore) {
+      this.projectRoutes = new ProjectRoutes(
+        opts.projectStore,
+        opts.issueStore ?? null,
+        opts.teamCoordinator ?? null,
+      );
+    }
 
     // Forward every gateway event to SSE clients
     eventBus.on('*', payload => {
@@ -181,6 +196,10 @@ export class DashboardServer {
   setMessagingManager(mgr: import('../messaging/messaging-manager.js').MessagingManager): void {
     this.credentialRoutes?.setMessagingManager(mgr);
     this.connectionRoutes?.setMessagingManager(mgr);
+  }
+
+  setTeamCoordinator(teamCoordinator: TeamCoordinator | null): void {
+    this.projectRoutes?.setTeamCoordinator(teamCoordinator);
   }
 
   /** Call from the gateway's handleHttp. Returns true if the request was handled. */
@@ -220,6 +239,7 @@ export class DashboardServer {
     if (this.credentialRoutes?.handle(req, res)) return true;
     if (this.agentRoutes?.handle(req, res)) return true;
     if (this.teamRoutes?.handle(req, res)) return true;
+    if (this.projectRoutes?.handle(req, res)) return true;
     if (this.workspaceRoutes.handle(req, res)) return true;
     if (this.webhookRoutes?.handle(req, res)) return true;
     if (this.cronRoutes?.handle(req, res)) return true;

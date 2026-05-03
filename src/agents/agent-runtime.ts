@@ -51,6 +51,10 @@ export interface AgentRunRequest {
    * Used by the gateway to inject run_team for lead agents in autonomous mode.
    */
   extraTools?: import('./tool-registry.js').RegisteredTool[];
+  /** Override max output tokens for this run (default: 4096) */
+  maxTokens?: number;
+  /** Called whenever the agent writes a file — used for artifact tracking */
+  onFileWrite?: (event: { agentId: string; relativePath: string; bytes: number }) => void;
 }
 
 export type AgentProgressEvent =
@@ -235,7 +239,7 @@ export class AgentRuntime {
           messages: working,
           systemPrompt: sysPrompt,
           tools: tools.length > 0 ? tools : undefined,
-          maxTokens: 4096,
+          maxTokens: req.maxTokens ?? 4096,
           temperature: 0.7,
         };
 
@@ -256,7 +260,7 @@ export class AgentRuntime {
             messages: working,
             systemPrompt: sysPrompt,
             tools: tools.length > 0 ? tools : undefined,
-            maxTokens: 4096,
+            maxTokens: req.maxTokens ?? 4096,
             temperature: 0.7,
             preferredModel: agentCfg.model?.primary,
             agentFailover: agentCfg.model?.failover ?? [],
@@ -343,6 +347,9 @@ export class AgentRuntime {
               workspace,
               subagentDepth: 0,
               requestApproval: req.requestApproval,
+              onFileWrite: req.onFileWrite
+                ? (e) => req.onFileWrite!({ agentId: req.agentId, ...e })
+                : undefined,
             });
             toolOutput = execResult.output;
             toolIsError = execResult.isError;

@@ -1301,10 +1301,15 @@ teamCmd
     });
 
     const { TeamCoordinator } = await import('../roles/team-coordinator.js');
+    const { ProjectStore } = await import('../projects/project-store.js');
+    const { IssueStore } = await import('../projects/issue-store.js');
+    const dataDir2 = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
     const coordinator = new TeamCoordinator({
       runtime,
       roles: config.teams.roles,
       teams: config.teams.teams,
+      projectStore: new ProjectStore(dataDir2),
+      issueStore: new IssueStore(dataDir2),
     });
 
     console.log(`\n👥 Running team "${teamDef.name}" on goal:\n   ${goal}\n`);
@@ -1321,6 +1326,243 @@ teamCmd
     sessions.close_db();
     budget.close();
     cache.close();
+    process.exit(result.success ? 0 : 1);
+  });
+
+// ─── Projects ─────────────────────────────────────────────
+
+const projectCmd = program
+  .command('projects')
+  .description('Team project management (persistent workspaces)');
+
+projectCmd
+  .command('list')
+  .description('List all projects')
+  .option('--team <teamId>', 'Filter by team ID')
+  .action(async (opts) => {
+    const { ProjectStore } = await import('../projects/project-store.js');
+    const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
+    const store = new ProjectStore(dataDir);
+
+    const projects = opts.team
+      ? store.listByTeam(opts.team)
+      : store.listAll();
+
+    if (!projects || projects.length === 0) {
+      console.log('\n  No projects found.\n');
+      store.close();
+      return;
+    }
+
+    console.log('\n📁 Projects:\n');
+    for (const p of projects) {
+      const status = p.status === 'archived' ? ' [archived]' : '';
+      console.log(`  ${p.id}${status}`);
+      console.log(`    Name:      ${p.name}`);
+      console.log(`    Workspace: ${p.workspacePath}`);
+      console.log(`    Updated:   ${new Date(p.updatedAt).toLocaleString()}`);
+      if (p.lastRunId) console.log(`    Last run:  ${p.lastRunId}`);
+      console.log('');
+    }
+    store.close();
+  });
+
+projectCmd
+  .command('show <projectId>')
+  .description('Show project details including artifacts and recent runs')
+  .action(async (projectId) => {
+    const { ProjectStore } = await import('../projects/project-store.js');
+    const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
+    const store = new ProjectStore(dataDir);
+
+    const project = store.getProject(projectId);
+    if (!project) {
+      console.error(`\n❌ Project "${projectId}" not found\n`);
+      store.close();
+      process.exit(1);
+    }
+
+    console.log(`\n📁 Project: ${project.name}`);
+    console.log(`   ID:        ${project.id}`);
+    console.log(`   Team:      ${project.teamId}`);
+    console.log(`   Workspace: ${project.workspacePath}`);
+    console.log(`   Status:    ${project.status}`);
+    console.log(`   Created:   ${new Date(project.createdAt).toLocaleString()}`);
+
+    if (project.brief) {
+      console.log('\n   Brief:');
+      for (const line of project.brief.split('\n')) {
+        console.log(`     ${line}`);
+      }
+    }
+
+    const artifacts = store.listArtifacts(projectId);
+    if (artifacts.length > 0) {
+      console.log(`\n   Artifacts (${artifacts.length}):`);
+      for (const a of artifacts) {
+        console.log(`     ${a.path} — ${a.summary || '(no summary)'}`);
+      }
+    }
+
+    const runs = store.listRunsByProject(projectId, 10);
+    if (runs.length > 0) {
+      console.log('\n   Recent runs:');
+      for (const r of runs) {
+        const icon = r.status === 'done' ? '✅' : r.status === 'failed' ? '❌' : '⏳';
+        console.log(`     ${icon} ${r.id} [${r.kind}] ${new Date(r.startedAt).toLocaleString()}`);
+        console.log(`        ${r.goal.slice(0, 80)}${r.goal.length > 80 ? '…' : ''}`);
+      }
+    }
+
+    console.log('');
+    store.close();
+  });
+
+projectCmd
+  .command('archive <projectId>')
+  .description('Archive a project (keeps data, stops auto-bind)')
+  .action(async (projectId) => {
+    const { ProjectStore } = await import('../projects/project-store.js');
+    const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
+    const store = new ProjectStore(dataDir);
+
+    const project = store.getProject(projectId);
+    if (!project) {
+      console.error(`\n❌ Project "${projectId}" not found\n`);
+      store.close();
+      process.exit(1);
+    }
+
+    store.archive(projectId);
+    console.log(`\n✅ Project "${project.name}" (${projectId}) archived.\n`);
+    store.close();
+  });
+
+// ─── Runs ─────────────────────────────────────────────────
+
+const runsCmd = program
+  .command('runs')
+  .description('Team run history and resume');
+
+runsCmd
+  .command('list')
+  .description('List runs for a project')
+  .requiredOption('--project <projectId>', 'Project ID')
+  .option('--limit <n>', 'Max results', '20')
+  .action(async (opts) => {
+    const { ProjectStore } = await import('../projects/project-store.js');
+    const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
+    const store = new ProjectStore(dataDir);
+
+    const runs = store.listRunsByProject(opts.project, Number(opts.limit));
+    if (runs.length === 0) {
+      console.log('\n  No runs found for this project.\n');
+      store.close();
+      return;
+    }
+
+    console.log(`\n🏃 Runs for project ${opts.project}:\n`);
+    for (const r of runs) {
+      const icon = r.status === 'done' ? '✅' : r.status === 'failed' ? '❌' : '⏳';
+      console.log(`  ${icon} ${r.id} [${r.kind}] ${r.status}`);
+      console.log(`     Goal:    ${r.goal.slice(0, 80)}${r.goal.length > 80 ? '…' : ''}`);
+      console.log(`     Started: ${new Date(r.startedAt).toLocaleString()}`);
+      const tasks = store.listTasksByRun(r.id);
+      if (tasks.length > 0) {
+        const done = tasks.filter(t => t.status === 'done').length;
+        const failed = tasks.filter(t => t.status === 'failed').length;
+        console.log(`     Tasks:   ${done}/${tasks.length} done${failed > 0 ? `, ${failed} failed` : ''}`);
+      }
+      console.log('');
+    }
+    store.close();
+  });
+
+runsCmd
+  .command('resume <runId>')
+  .description('Resume a failed or paused team run')
+  .option('-c, --config <path>', 'Config path', 'ai-desk.json')
+  .action(async (runId, opts) => {
+    const masterKey = requireMasterKey();
+    const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
+    const { config } = loadConfig(opts.config);
+
+    if (!config.teams || config.teams.teams.length === 0) {
+      console.error('\n❌ No teams configured in ai-desk.json\n');
+      process.exit(1);
+    }
+
+    const { ProjectStore } = await import('../projects/project-store.js');
+    const store = new ProjectStore(dataDir);
+    const run = store.getRun(runId);
+    if (!run) {
+      console.error(`\n❌ Run "${runId}" not found\n`);
+      store.close();
+      process.exit(1);
+    }
+
+    if (run.status === 'done') {
+      console.log(`\n✅ Run "${runId}" already completed.\n`);
+      store.close();
+      return;
+    }
+
+    const credStore = new CredentialStore(dataDir, masterKey);
+    const router = new ModelRouter(config.agents.defaults.model, config.agents.defaults.subagents.model, credStore);
+    const sessions = new SessionStore(dataDir, masterKey);
+    const policy = new PolicyEngine(config.agents.defaults.tools);
+    const sandbox = new SandboxManager(config.agents.defaults.sandbox);
+    const threat = new ThreatDetector();
+    const budget = new BudgetTracker(dataDir, config.agents.defaults.budget);
+    const cache = new ResponseCache(dataDir, masterKey,
+      config.cache ?? { enabled: true, backend: 'sqlite', ttlSeconds: 3600 });
+    const memoryCfg6 = config.memory ?? { backend: 'none', compaction: { threshold: 0.6, model: 'anthropic/claude-haiku-3.5' } };
+    const memoryStore6 = memoryCfg6.backend === 'sqlite-vec' ? new MemoryStore(dataDir) : undefined;
+    const compactor = new ContextCompactor(router, memoryCfg6, memoryStore6);
+    const registry = new ToolRegistry();
+    const executor = new ToolExecutor({
+      policy, registry, sandbox, threat,
+      sandboxConfig: config.agents.defaults.sandbox,
+      requestApproval: async () => false,
+    });
+    const subagents = new SubagentSpawner({
+      router, executor, budget, compactor, policy,
+      defaults: config.agents.defaults.subagents,
+    });
+    const runtime = new AgentRuntime({
+      router, cache, budget, compactor, executor, subagents,
+      sessions, threat,
+      defaults: config.agents.defaults,
+      agents: config.agents.list,
+      memoryStore: memoryStore6,
+    });
+
+    const { TeamCoordinator } = await import('../roles/team-coordinator.js');
+    const { IssueStore: IssueStore2 } = await import('../projects/issue-store.js');
+    const coordinator = new TeamCoordinator({
+      runtime,
+      roles: config.teams.roles,
+      teams: config.teams.teams,
+      projectStore: store,
+      issueStore: new IssueStore2(dataDir),
+    });
+
+    const tasks = store.listTasksByRun(runId);
+    const pending = tasks.filter(t => t.status === 'pending' || t.status === 'failed').length;
+    console.log(`\n🔄 Resuming run "${runId}" (${pending} tasks remaining)...\n`);
+
+    const result = await coordinator.resume(runId);
+
+    console.log('\n─── Resume Result ──────────────────────────');
+    console.log(result.synthesis);
+    console.log('─────────────────────────────────────────────');
+    const icon = result.success ? '✅' : '⚠️ ';
+    console.log(`${icon} Done: ${result.doneCount}/${result.taskCount} | Failed: ${result.failedCount}\n`);
+
+    sessions.close_db();
+    budget.close();
+    cache.close();
+    store.close();
     process.exit(result.success ? 0 : 1);
   });
 

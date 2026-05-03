@@ -25,4 +25,7 @@ export interface TeamRunResult {
   failedCount: number;
   totalDurationMs: number;
   tokensUsed: { input: number; output: number; total: number; cost: number };
+  projectId: string | null;
+  runId: string | null;
+  resumable: boolean;
 }

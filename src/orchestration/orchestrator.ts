@@ -24,6 +24,10 @@ export interface OrchestrateRequest {
   peerId?: string;
   /** Team that spawned this orchestration — forwarded in task:* events */
   teamId?: string;
+  /** Pre-seeded results for already-done tasks (resume flow) */
+  completedResults?: Record<string, string>;
+  /** Called whenever an agent writes a file — used for artifact tracking */
+  onFileWrite?: (event: { relativePath: string; bytes: number }) => void;
 }
 
 export interface OrchestrateResult {
@@ -53,7 +57,7 @@ export class Orchestrator {
 
   async run(req: OrchestrateRequest): Promise<OrchestrateResult> {
     const start = Date.now();
-    const graph = new TaskGraph(req.tasks);
+    const graph = new TaskGraph(req.tasks, req.completedResults);
     const maxConcurrent = req.maxConcurrent ?? 5;
     const failFast = req.failFast ?? false;
     const running = new Set<string>();
@@ -137,12 +141,15 @@ export class Orchestrator {
           eventBus.emit('task:step', { taskId: id, agentId, teamId, label, step: event.type,
             detail: event.type === 'tool_use' ? (event as { toolName: string }).toolName : undefined });
         },
+        onFileWrite: req.onFileWrite
+          ? (e) => req.onFileWrite!({ relativePath: e.relativePath, bytes: e.bytes })
+          : undefined,
       });
 
       if (result.success) {
         graph.markDone(id, result.content);
         eventBus.emit('orchestrator:task-done', { id, durationMs: result.durationMs });
-        eventBus.emit('task:done', { taskId: id, agentId, teamId, label, durationMs: result.durationMs });
+        eventBus.emit('task:done', { taskId: id, agentId, teamId, label, durationMs: result.durationMs, result: result.content });
       } else {
         graph.markFailed(id, result.error ?? 'agent returned failure');
         eventBus.emit('orchestrator:task-failed', { id, error: result.error });

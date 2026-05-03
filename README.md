@@ -12,7 +12,7 @@
   <a href="https://github.com/karizo502/ai-desk/releases"><img src="https://img.shields.io/github/v/release/karizo502/ai-desk?include_prereleases&style=for-the-badge" alt="GitHub release"></a>
   <a href="https://discord.gg/qyNvqBgn"><img src="https://img.shields.io/discord/1499877984755257480?label=Discord&logo=discord&logoColor=white&color=5865F2&style=for-the-badge" alt="Discord"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="MIT License"></a>
-  <a href="https://buymeacoffee.com/aideskteam"><img src="https://img.shields.io/badge/Donate-Buy%20Me%20A%20Coffee-orange?style=for-the-badge&logo=buy-me-a-coffee" alt="Buy Me A Coffee"></a>
+  <a href="https://buymeacoffee.com/aideskteam"><img src="https://img.shields.io/badge/Support-Buy%20Me%20A%20Coffee-orange?style=for-the-badge&logo=buy-me-a-coffee" alt="Buy Me A Coffee"></a>
 </div>
 
 A security-first gateway for running personal AI agents in a hardened, controlled environment. Authentication, sandboxing, and threat detection are mandatory and always-on — not optional add-ons.

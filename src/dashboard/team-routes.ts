@@ -213,6 +213,8 @@ export class TeamRoutes {
       const { SubagentSpawner } = await import('../agents/subagent-spawner.js');
       const { AgentRuntime }    = await import('../agents/agent-runtime.js');
       const { TeamCoordinator } = await import('../roles/team-coordinator.js');
+      const { ProjectStore }    = await import('../projects/project-store.js');
+      const { IssueStore }      = await import('../projects/issue-store.js');
 
       const masterKey = process.env.AI_DESK_MASTER_KEY ?? '';
       const dataDir   = process.env.AI_DESK_DATA_DIR   ?? './.ai-desk-data';
@@ -246,10 +248,14 @@ export class TeamRoutes {
         agents:   config.agents.list,
       });
 
+      const projectStore = new ProjectStore(dataDir);
+      const issueStore   = new IssueStore(dataDir);
       const coordinator = new TeamCoordinator({
         runtime,
         roles: config.teams.roles,
         teams: config.teams.teams,
+        projectStore,
+        issueStore,
       });
 
       const result = await coordinator.run(teamId, goal);
@@ -259,6 +265,7 @@ export class TeamRoutes {
       budget.close();
       cache.close();
       credStore.close();
+      projectStore.close();
 
       this.json(res, result);
     } catch (err) {

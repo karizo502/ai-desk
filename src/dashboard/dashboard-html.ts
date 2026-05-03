@@ -424,6 +424,24 @@ tr:hover td { background: rgba(200,144,72,0.06); }
 .member-slot-role { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase; }
 .member-slot.lead .member-slot-role { color: var(--accent); }
 .member-slot-agent { font-family: var(--font-mono); font-size: 12px; color: var(--text); }
+/* Projects tab */
+.project-grid { display: grid; grid-template-columns: minmax(360px, 1.1fr) minmax(420px, 1.4fr); gap: 24px; align-items: start; }
+.project-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 18px; }
+.project-mini-list { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
+.project-mini-row { border: 1px solid var(--border); background: var(--bg); padding: 9px 11px; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+.project-mini-row:hover { border-color: var(--accent); }
+.project-mini-title { font-family: var(--font-mono); font-size: 11px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-mini-meta { font-family: var(--font-mono); font-size: 9px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-brief-box { width: 100%; min-height: 130px; resize: vertical; font-family: var(--font-mono); font-size: 11px; line-height: 1.5; margin-bottom: 10px; }
+.project-run-card { border-left: 3px solid var(--border); }
+.project-run-card.done { border-left-color: var(--green); }
+.project-run-card.failed { border-left-color: var(--red); }
+.project-run-card.running { border-left-color: var(--accent); }
+.project-run-card.paused { border-left-color: var(--yellow); }
+.project-task-row { border: 1px solid var(--border); padding: 9px 10px; display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-bottom: 6px; background: var(--bg); }
+.project-task-title { font-family: var(--font-mono); font-size: 11px; color: var(--text); }
+.project-task-prompt { margin-top: 4px; font-family: var(--font-mono); font-size: 9px; line-height: 1.45; color: var(--muted); white-space: pre-wrap; max-height: 72px; overflow: hidden; }
+@media (max-width: 1100px) { .project-grid, .project-detail-grid { grid-template-columns: 1fr; } }
 /* keep avatar classes for modal compatibility */
 .agent-avatar { width: 40px; height: 40px; border-radius: 0; border: 1px solid var(--accent); object-fit: cover; }
 .agent-avatar-placeholder { width: 40px; height: 40px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; font-family: var(--font-tactical); }
@@ -517,6 +535,10 @@ svg.ws-dag-svg { display: block; }
       <button class="nav-tab" id="ntab-workspace" onclick="switchTab('workspace')">
         <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 17.5h7M17.5 14v7"/></svg>
         Workspace<span class="nav-arrow">→</span>
+      </button>
+      <button class="nav-tab" id="ntab-projects" onclick="switchTab('projects')">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M8 13h8"/></svg>
+        Projects<span class="nav-arrow">→</span>
       </button>
     </nav>
 
@@ -783,6 +805,40 @@ svg.ws-dag-svg { display: block; }
         </h3>
         <div id="teams-dossier" class="card-body" style="padding:20px 20px 24px">
           <div class="dossier-empty">SELECT A TEAM</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Projects -->
+  <div class="content-area" id="tab-projects">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;gap:16px;flex-wrap:wrap">
+      <h3 style="margin:0;font-family:var(--font-tactical);font-size:20px;letter-spacing:0.1em;text-transform:uppercase">TEAM PROJECTS</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="project-team-filter" onchange="loadProjects()" style="min-width:180px">
+          <option value="">All teams</option>
+        </select>
+        <button class="btn" onclick="loadProjects()">Refresh</button>
+      </div>
+    </div>
+    <div class="project-grid">
+      <div class="card" style="margin-bottom:0">
+        <h3 style="margin:0;padding:16px 16px 14px;border-bottom:1px solid var(--border)">
+          <svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+          PROJECTS
+        </h3>
+        <div class="roster-head" style="grid-template-columns:36px 1.3fr 0.8fr 0.7fr 0.7fr">
+          <div>No</div><div>NAME</div><div>TEAM</div><div>RUNS</div><div>ISSUES</div>
+        </div>
+        <div id="projects-roster"><div class="dossier-empty">Loading...</div></div>
+      </div>
+      <div class="card" style="margin-bottom:0">
+        <h3 style="margin:0;padding:16px 16px 14px;border-bottom:1px solid var(--border)">
+          <svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+          DETAIL
+        </h3>
+        <div id="project-detail" class="card-body" style="padding:20px 20px 24px">
+          <div class="dossier-empty">SELECT A PROJECT</div>
         </div>
       </div>
     </div>
@@ -1611,6 +1667,7 @@ function switchTab(name) {
     agents:    ['MODEL',  'AGENTS',      'OVERVIEW / №02'],
     teams:     ['WORKING','TEAMS',       'OVERVIEW / №03'],
     workspace: ['LIVE',   'WORKSPACE',   'OVERVIEW / №03B'],
+    projects:  ['TEAM',   'PROJECTS',    'OVERVIEW / №03C'],
     roles:     ['ROLE',   'REGISTRY',    'OVERVIEW / №04'],
     skills:    ['SKILL',  'REGISTRY',    'OVERVIEW / №05'],
     mcp:       ['MCP',    'SERVERS',     'OVERVIEW / №06'],
@@ -1626,7 +1683,7 @@ function switchTab(name) {
   $('view-title').innerHTML = prefix + (accent ? ' <span class="title-accent">' + accent + '</span>' : '');
   $('view-overview').textContent = overview;
 
-  ['status','agents','teams','workspace','roles','skills','mcp','messaging','chat','history','schedule','webhooks','creds','audit'].forEach(t => {
+  ['status','agents','teams','workspace','projects','roles','skills','mcp','messaging','chat','history','schedule','webhooks','creds','audit'].forEach(t => {
     const content = $('tab-' + t);
     if (content) content.classList.toggle('active', t === name);
 
@@ -1640,6 +1697,7 @@ function switchTab(name) {
   if (name === 'agents')    loadAgents();
   if (name === 'teams')     loadTeams();
   if (name === 'workspace') loadWorkspace();
+  if (name === 'projects')  loadProjects();
   if (name === 'roles')     loadTeams();
   if (name === 'messaging') loadConnections();
   if (name === 'history')   loadHistory();
@@ -3404,6 +3462,225 @@ function showTeamMsg(id, text, cls) {
 // ═══════════════════════════════════════════════════════════════
 //  Session History
 // ═══════════════════════════════════════════════════════════════
+let projectsData = [];
+let selectedProjectId = null;
+let selectedProjectDetail = null;
+
+async function loadProjects() {
+  const roster = $('projects-roster');
+  if (!roster) return;
+  roster.innerHTML = '<div class="dossier-empty" style="padding:20px">Loading...</div>';
+  await ensureProjectTeamFilter();
+  const teamId = $('project-team-filter')?.value || '';
+  try {
+    const r = await apiFetch('/dashboard/api/projects' + (teamId ? '?team=' + encodeURIComponent(teamId) : ''));
+    const d = await r.json();
+    if (!r.ok || d.error) {
+      roster.innerHTML = '<div class="dossier-empty" style="color:var(--red)">' + esc(d.error || 'Failed to load projects') + '</div>';
+      return;
+    }
+    projectsData = d.projects || [];
+    renderProjects();
+    if (selectedProjectId && projectsData.some(p => p.id === selectedProjectId)) await selectProject(selectedProjectId);
+    else if (projectsData[0]) await selectProject(projectsData[0].id);
+    else {
+      selectedProjectId = null;
+      $('project-detail').innerHTML = '<div class="dossier-empty">NO PROJECTS YET</div>';
+    }
+  } catch (e) {
+    roster.innerHTML = '<div class="dossier-empty" style="color:var(--red)">' + esc(String(e)) + '</div>';
+  }
+}
+
+async function ensureProjectTeamFilter() {
+  const sel = $('project-team-filter');
+  if (!sel) return;
+  if (!teamsData.teams || teamsData.teams.length === 0) {
+    try {
+      const r = await apiFetch('/dashboard/api/teams');
+      if (r.ok) teamsData = await r.json();
+    } catch { /* ignore */ }
+  }
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All teams</option>'
+    + (teamsData.teams || []).map(t => '<option value="' + esc(t.id) + '"' + (t.id === current ? ' selected' : '') + '>' + esc(t.name || t.id) + '</option>').join('');
+}
+
+function renderProjects() {
+  const roster = $('projects-roster');
+  if (!roster) return;
+  if (!projectsData.length) {
+    roster.innerHTML = '<div class="empty" style="padding:24px 16px">No projects found.</div>';
+    return;
+  }
+  roster.innerHTML = projectsData.map((p, i) => {
+    const pid = esc(p.id);
+    const active = p.id === selectedProjectId;
+    const issueColor = p.openIssueCount > 0 ? 'var(--yellow)' : 'var(--muted)';
+    return '<div class="roster-row' + (active ? ' selected' : '') + '" style="grid-template-columns:36px 1.3fr 0.8fr 0.7fr 0.7fr" data-pid="' + pid + '" onclick="selectProject(this.dataset.pid)">'
+      + '<div class="r-num">' + String(i + 1).padStart(2, '0') + '</div>'
+      + '<div class="r-id">' + esc(p.name) + '<small>' + esc(p.status) + ' - ' + timeAgo(p.updatedAt) + '</small></div>'
+      + '<div class="r-model">' + esc(p.teamId) + '</div>'
+      + '<div class="r-stat">' + Number(p.runCount || 0) + '</div>'
+      + '<div class="r-stat" style="color:' + issueColor + '">' + Number(p.openIssueCount || 0) + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+async function selectProject(id) {
+  selectedProjectId = id;
+  document.querySelectorAll('#projects-roster .roster-row').forEach(r => {
+    r.classList.toggle('selected', /** @type {HTMLElement} */(r).dataset.pid === id);
+  });
+  const detail = $('project-detail');
+  if (!detail) return;
+  detail.innerHTML = '<div class="dossier-empty">Loading...</div>';
+  try {
+    const r = await apiFetch('/dashboard/api/projects/' + encodeURIComponent(id));
+    const d = await r.json();
+    if (!r.ok || d.error) {
+      detail.innerHTML = '<div class="dossier-empty" style="color:var(--red)">' + esc(d.error || 'Project not found') + '</div>';
+      return;
+    }
+    selectedProjectDetail = d;
+    renderProjectDetail();
+  } catch (e) {
+    detail.innerHTML = '<div class="dossier-empty" style="color:var(--red)">' + esc(String(e)) + '</div>';
+  }
+}
+
+function renderProjectDetail() {
+  if (!selectedProjectDetail) return;
+  const p = selectedProjectDetail.project;
+  const artifacts = selectedProjectDetail.artifacts || [];
+  const runs = selectedProjectDetail.runs || [];
+  const issues = selectedProjectDetail.issues || [];
+  const openIssues = issues.filter(i => i.status === 'open' || i.status === 'in_progress');
+
+  $('project-detail').innerHTML =
+    '<div class="dossier-num">PROJECT ' + esc(p.id) + '</div>'
+    + '<div class="dossier-name" style="font-size:40px">' + esc(p.name) + '</div>'
+    + '<div class="dossier-pill-row">'
+    +   '<span class="badge ' + (p.status === 'active' ? 'green' : 'muted') + '">' + esc(p.status.toUpperCase()) + '</span>'
+    +   '<span class="badge blue">' + esc(p.teamId) + '</span>'
+    +   '<span class="badge ' + (openIssues.length ? 'yellow' : 'muted') + '">' + openIssues.length + ' OPEN ISSUES</span>'
+    + '</div>'
+    + '<div class="dossier-config-label">WORKSPACE</div>'
+    + '<div class="dossier-sysprompt" style="max-height:none;margin-bottom:14px">' + esc(p.workspacePath) + '</div>'
+    + '<div class="dossier-config-label">BRIEF</div>'
+    + '<textarea class="project-brief-box" id="project-brief-edit">' + esc(p.brief || '') + '</textarea>'
+    + '<div class="dossier-actions" style="margin-bottom:18px"><button class="btn primary" style="font-size:11px" onclick="saveProjectBrief()">Save Brief</button></div>'
+    + '<div class="dossier-config">'
+    +   '<div class="dossier-config-cell"><div class="dossier-config-cell-label">Artifacts</div><div class="dossier-config-cell-val">' + artifacts.length + '</div></div>'
+    +   '<div class="dossier-config-cell"><div class="dossier-config-cell-label">Runs</div><div class="dossier-config-cell-val">' + runs.length + '</div></div>'
+    +   '<div class="dossier-config-cell"><div class="dossier-config-cell-label">Updated</div><div class="dossier-config-cell-val">' + timeAgo(p.updatedAt) + '</div></div>'
+    +   '<div class="dossier-config-cell"><div class="dossier-config-cell-label">Last Run</div><div class="dossier-config-cell-val">' + esc(p.lastRunId || '-') + '</div></div>'
+    + '</div>'
+    + '<div class="project-detail-grid">'
+    + renderProjectRuns(runs) + renderProjectArtifacts(artifacts) + renderProjectIssues(issues)
+    + '<div class="card" style="margin-bottom:0"><h3>RUN DETAIL</h3><div class="card-body" id="project-run-detail"><div class="empty">Select a run.</div></div></div>'
+    + '</div>';
+}
+
+function renderProjectRuns(runs) {
+  return '<div class="card" style="margin-bottom:0"><h3>RUN TIMELINE</h3><div class="card-body"><div class="project-mini-list">'
+    + (runs.length ? runs.map(r => {
+        const counts = r.taskCounts || {};
+        const total = Object.values(counts).reduce((a, b) => a + Number(b || 0), 0);
+        const statusCls = r.status === 'done' ? 'green' : r.status === 'failed' ? 'red' : r.status === 'running' ? 'blue' : 'yellow';
+        return '<div class="project-mini-row project-run-card ' + esc(r.status) + '" data-rid="' + esc(r.id) + '" onclick="loadProjectRun(this.dataset.rid)">'
+          + '<div><div class="project-mini-title">' + esc(r.goal || r.id) + '</div><div class="project-mini-meta">' + esc(r.kind) + ' - ' + timeAgo(r.startedAt) + ' - ' + Number(counts.done || 0) + '/' + total + ' tasks</div></div>'
+          + '<span class="badge ' + statusCls + '">' + esc(r.status.toUpperCase()) + '</span></div>';
+      }).join('') : '<div class="empty">No runs recorded.</div>')
+    + '</div></div></div>';
+}
+
+function renderProjectArtifacts(artifacts) {
+  return '<div class="card" style="margin-bottom:0"><h3>ARTIFACTS</h3><div class="card-body"><div class="project-mini-list">'
+    + (artifacts.length ? artifacts.map(a => '<div class="project-mini-row"><div><div class="project-mini-title">' + esc(a.path) + '</div><div class="project-mini-meta">' + esc(a.summary || 'No summary') + '</div></div><div class="project-mini-meta">' + formatBytes(a.bytes || 0) + '</div></div>').join('') : '<div class="empty">No artifacts tracked.</div>')
+    + '</div></div></div>';
+}
+
+function renderProjectIssues(issues) {
+  return '<div class="card" style="margin-bottom:0"><h3>ISSUES</h3><div class="card-body"><div class="project-mini-list">'
+    + (issues.length ? issues.map(i => {
+        const cls = i.status === 'closed' ? 'green' : i.status === 'wontfix' ? 'muted' : i.kind === 'bug' ? 'red' : 'yellow';
+        const canClose = i.status === 'open' || i.status === 'in_progress';
+        return '<div class="project-mini-row"><div><div class="project-mini-title">' + esc(i.title) + '</div><div class="project-mini-meta">' + esc(i.kind) + ' - ' + esc(i.status) + ' - ' + timeAgo(i.openedAt) + '</div></div>'
+          + (canClose ? '<button class="btn" style="font-size:10px;padding:4px 8px" data-iid="' + esc(i.id) + '" onclick="event.stopPropagation();closeProjectIssue(this.dataset.iid)">Close</button>' : '<span class="badge ' + cls + '">' + esc(i.status.toUpperCase()) + '</span>')
+          + '</div>';
+      }).join('') : '<div class="empty">No issues recorded.</div>')
+    + '</div></div></div>';
+}
+
+async function saveProjectBrief() {
+  if (!selectedProjectDetail) return;
+  const p = selectedProjectDetail.project;
+  const brief = $('project-brief-edit')?.value || '';
+  try {
+    const r = await apiFetch('/dashboard/api/projects/' + encodeURIComponent(p.id), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ brief }) });
+    const d = await r.json();
+    if (!r.ok || d.error) { alert(d.error || 'Save failed'); return; }
+    await selectProject(p.id);
+    await loadProjects();
+  } catch (e) { alert(String(e)); }
+}
+
+async function loadProjectRun(runId) {
+  const el = $('project-run-detail');
+  if (!el) return;
+  el.innerHTML = '<div class="dossier-empty">Loading...</div>';
+  try {
+    const r = await apiFetch('/dashboard/api/runs/' + encodeURIComponent(runId));
+    const d = await r.json();
+    if (!r.ok || d.error) {
+      el.innerHTML = '<div class="dossier-empty" style="color:var(--red)">' + esc(d.error || 'Run not found') + '</div>';
+      return;
+    }
+    const run = d.run;
+    const tasks = d.tasks || [];
+    const resumeBtn = run.resumable ? '<button class="btn primary" style="font-size:11px" data-rid="' + esc(run.id) + '" onclick="resumeProjectRun(this.dataset.rid)">Resume</button>' : '';
+    el.innerHTML =
+      '<div class="dossier-config-label">RUN ' + esc(run.id) + '</div>'
+      + '<div class="dossier-goal">' + esc(run.goal || '') + '</div>'
+      + '<div class="dossier-pill-row"><span class="badge blue">' + esc(run.kind) + '</span><span class="badge ' + (run.status === 'done' ? 'green' : run.status === 'failed' ? 'red' : 'yellow') + '">' + esc(run.status.toUpperCase()) + '</span></div>'
+      + '<div class="dossier-actions" style="margin-bottom:14px">' + resumeBtn + '</div>'
+      + (tasks.length ? tasks.map(t => '<div class="project-task-row"><div><div class="project-task-title">' + esc(t.label || t.taskId) + '</div><div class="project-mini-meta">' + esc(t.agentId) + ' - depends: ' + esc((t.depends || []).join(', ') || '-') + '</div><div class="project-task-prompt">' + esc(t.result || t.error || t.prompt || '') + '</div></div><span class="badge ' + (t.status === 'done' ? 'green' : t.status === 'failed' ? 'red' : t.status === 'running' ? 'blue' : 'muted') + '">' + esc(t.status.toUpperCase()) + '</span></div>').join('') : '<div class="empty">No tasks recorded.</div>');
+  } catch (e) {
+    el.innerHTML = '<div class="dossier-empty" style="color:var(--red)">' + esc(String(e)) + '</div>';
+  }
+}
+
+async function resumeProjectRun(runId) {
+  if (!confirm('Resume run ' + runId + '?')) return;
+  const el = $('project-run-detail');
+  if (el) el.innerHTML = '<div class="dossier-empty">Resuming...</div>';
+  try {
+    const r = await apiFetch('/dashboard/api/runs/' + encodeURIComponent(runId) + '/resume', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok || d.error) { alert(d.error || 'Resume failed'); return; }
+    if (selectedProjectId) await selectProject(selectedProjectId);
+    await loadProjectRun(runId);
+  } catch (e) { alert(String(e)); }
+}
+
+async function closeProjectIssue(issueId) {
+  try {
+    const r = await apiFetch('/dashboard/api/issues/' + encodeURIComponent(issueId) + '/close', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok || d.error) { alert(d.error || 'Close failed'); return; }
+    if (selectedProjectId) await selectProject(selectedProjectId);
+    await loadProjects();
+  } catch (e) { alert(String(e)); }
+}
+
+function formatBytes(n) {
+  n = Number(n || 0);
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  return (n / 1024 / 1024).toFixed(1) + ' MB';
+}
+
 let histSessions = [];
 let histSelected = null;
 

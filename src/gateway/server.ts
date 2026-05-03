@@ -34,6 +34,8 @@ import { SkillRegistry } from '../skills/skill-registry.js';
 import { DashboardServer, type DashboardSnapshot } from '../dashboard/dashboard-server.js';
 import { WebhookStore } from '../dashboard/webhook-store.js';
 import { CronStore } from '../dashboard/cron-store.js';
+import { ProjectStore } from '../projects/project-store.js';
+import { IssueStore } from '../projects/issue-store.js';
 import { CronScheduler } from '../dashboard/cron-scheduler.js';
 import { ConnectionStore } from '../dashboard/connection-store.js';
 import { TeamCoordinator } from '../roles/team-coordinator.js';
@@ -82,6 +84,8 @@ export class GatewayServer {
   private skillRegistry: SkillRegistry;
   private dashboardServer: DashboardServer;
   private teamCoordinator: TeamCoordinator | null = null;
+  private projectStore: ProjectStore | null = null;
+  private issueStore: IssueStore | null = null;
   private webhookStore: WebhookStore | null = null;
   private cronStore: CronStore | null = null;
   private cronScheduler: CronScheduler | null = null;
@@ -178,10 +182,14 @@ export class GatewayServer {
 
     // Team coordinator — wired after start() reads config.teams
     if (config.teams && (config.teams.roles.length > 0 || config.teams.teams.length > 0)) {
+      this.projectStore = new ProjectStore(dataDir);
+      this.issueStore = new IssueStore(dataDir);
       this.teamCoordinator = new TeamCoordinator({
         runtime: this.agentRuntime,
         roles: config.teams.roles,
         teams: config.teams.teams,
+        projectStore: this.projectStore,
+        issueStore: this.issueStore,
       });
     }
 
@@ -240,6 +248,9 @@ export class GatewayServer {
         cronScheduler:   this.cronScheduler ?? undefined,
         sessionStore:    this.sessionStore,
         connectionStore: this.connectionStore ?? undefined,
+        projectStore:    this.projectStore ?? undefined,
+        issueStore:      this.issueStore ?? undefined,
+        teamCoordinator: this.teamCoordinator ?? undefined,
       },
     );
 

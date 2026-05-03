@@ -74,13 +74,16 @@ describe('TeamCoordinator.run()', () => {
     expect(result.synthesis).toMatch(/invalid task json/i);
   });
 
-  it('returns failure when the lead agent returns an empty task array', async () => {
+  it('answers directly when the lead agent returns an empty task array', async () => {
     const runtime = mockRuntime([
       { success: true, content: '[]' },
+      { success: true, content: 'direct answer' },
     ]);
     const coordinator = new TeamCoordinator({ runtime, roles: ROLES, teams: [TEAM] });
     const result = await coordinator.run('team1', 'my goal');
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    expect(result.synthesis).toBe('direct answer');
+    expect(result.taskCount).toBe(0);
   });
 
   it('calls runtime.run at least 3 times: decompose, worker task, synthesise', async () => {

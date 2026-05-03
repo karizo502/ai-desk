@@ -27,6 +27,7 @@ export interface ToolExecuteRequest {
   subagentDepth: number;
   /** Per-run approval requester — overrides the instance-level default when provided */
   requestApproval?: ApprovalRequester;
+  onFileWrite?: (event: { relativePath: string; bytes: number }) => void;
 }
 
 export interface ToolExecuteResult {
@@ -149,6 +150,7 @@ export class ToolExecutor {
         agentId: req.agentId,
         runId: req.runId,
         sandbox: this.sandbox,
+        onFileWrite: req.onFileWrite,
       });
     } catch (err) {
       result = { output: `Tool threw: ${(err as Error).message}`, isError: true };
