@@ -276,17 +276,27 @@ export class DashboardServer {
   }
 
   /**
-   * Check for a valid auth token in the query string (?token=...) or x-ai-desk-token header.
+   * Check for a valid auth token in the Authorization header, query string (?token=...), or x-ai-desk-token header.
    * Returns true if authenticated, otherwise returns false and sends 401.
    */
   private checkAuth(req: IncomingMessage, res: ServerResponse): boolean {
     const remoteAddress = req.socket.remoteAddress ?? 'unknown';
-
-    // 1. Check query param
     const url = new URL(req.url ?? '', `http://${req.headers.host}`);
-    let token = url.searchParams.get('token');
 
-    // 2. Check header
+    let token = '';
+
+    // 1. Check Authorization header (Bearer token)
+    const authHeader = req.headers['authorization'];
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    }
+
+    // 2. Check query param
+    if (!token) {
+      token = url.searchParams.get('token') ?? '';
+    }
+
+    // 3. Check legacy header
     if (!token) {
       token = (req.headers['x-ai-desk-token'] as string) ?? '';
     }

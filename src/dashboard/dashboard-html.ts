@@ -1639,9 +1639,8 @@ function setTheme(mode) {
 
 // Global API Wrapper
 async function apiFetch(url, opts = {}) {
-  const separator = url.includes('?') ? '&' : '?';
-  const finalUrl = url + separator + 'token=' + encodeURIComponent(authToken);
-  const r = await fetch(finalUrl, opts);
+  const headers = { ...opts.headers, 'Authorization': 'Bearer ' + authToken };
+  const r = await fetch(url, { ...opts, headers });
   if (r.status === 401) logout();
   return r;
 }
