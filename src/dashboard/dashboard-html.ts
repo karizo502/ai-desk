@@ -258,6 +258,21 @@ tr:hover td { background: rgba(200,144,72,0.06); }
 /* ── Chat Specific ──────────────────────────────────────── */
 #tab-chat { padding: 0; height: 100%; display: none; flex-direction: column; }
 #tab-chat.active { display: flex; }
+.chat-msg-row { display: grid; grid-template-columns: 52px 1fr; gap: 16px; align-items: flex-start; }
+.chat-avatar { width: 44px; height: 44px; display: grid; place-items: center; font-family: var(--font-tactical); font-size: 20px; line-height: 1; flex-shrink: 0; }
+.chat-avatar.user { background: var(--text); color: var(--bg); }
+.chat-avatar.agent { background: var(--accent); color: var(--bg); }
+.chat-msg-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.chat-msg-name { font-family: var(--font-tactical); font-size: 18px; letter-spacing: 0.06em; color: var(--text); }
+.chat-msg-time { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.18em; color: var(--muted); }
+.msg-bubble { border: 1px solid var(--border); padding: 12px 16px; font-size: 13.5px; line-height: 1.6; color: var(--text); border-left: 3px solid var(--border); }
+.chat-msg-row.agent .msg-bubble { border-left-color: var(--accent); background: rgba(200,144,72,0.04); }
+.msg-cursor { display: inline-block; width: 2px; height: 14px; background: var(--accent); margin-left: 2px; vertical-align: text-bottom; animation: blink .8s step-end infinite; }
+.chat-thread-item { display: block; width: 100%; box-sizing: border-box; padding: 14px 18px; border-bottom: 1px solid var(--border); cursor: pointer; background: transparent; border-left: 3px solid transparent; text-align: left; transition: background 0.1s; all: unset; cursor: pointer; display: block; width: 100%; box-sizing: border-box; }
+.chat-thread-item:hover { background: rgba(244,239,229,0.03); }
+.chat-thread-item.selected { background: var(--accent-soft, rgba(200,144,72,0.07)); border-left: 3px solid var(--accent); padding-left: 15px; }
+.msg-tokens { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 6px; letter-spacing: 0.08em; }
+@keyframes chatDot { 0%,60%,100%{opacity:1} 30%{opacity:0.15} }
 
 /* ── History Specific ──────────────────────────────────── */
 #tab-history { padding: 0; height: 100%; display: none; flex-direction: column; }
@@ -273,10 +288,7 @@ tr:hover td { background: rgba(200,144,72,0.06); }
 .hist-msg-body { border: 1px solid var(--border); padding: 12px 16px; font-size: 13.5px; line-height: 1.6; color: var(--text); }
 .hist-tool-bar { margin: 4px 0 4px 66px; padding: 6px 12px; background: var(--bg-input); border: 1px solid var(--border); font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
 .hist-code-block { margin-top: 8px; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); font-family: var(--font-mono); font-size: 11px; color: var(--accent); overflow-x: auto; white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; }
-#chat-messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
-.msg-bubble { border-radius: 16px !important; padding: 12px 18px !important; font-size: 14px !important; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-#chat-input-row { padding: 20px 24px; background: var(--bg-card); border-top: 1px solid var(--border); }
-#chat-input { border-radius: 12px !important; padding: 12px 16px !important; }
+#chat-input { resize: none; overflow: hidden; }
 /* ── Tool Approval Card ─────────────────────────────────── */
 .approval-card { background: var(--bg-card); border: 1px solid #c4954a; border-left: 3px solid #c4954a; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; animation: slideIn 0.15s ease; }
 @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -761,18 +773,124 @@ svg.ws-dag-svg { display: block; }
   <!-- Chat -->
 
   <div class="content-area" id="tab-chat">
-    <div id="chat-toolbar" style="padding:16px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center">
-      <label style="font-size:12px;color:var(--muted)">Agent</label>
-      <select id="chat-agent" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:8px"><option value="">default</option></select>
-      <input type="password" id="chat-token" class="login-input" style="width:180px;margin-bottom:0;padding:6px 12px" placeholder="Auth Token…">
-      <button id="chat-connect-btn" class="btn primary" onclick="chatToggleConnect()">Connect WebSocket</button>
-      <span id="ws-badge" class="badge">disconnected</span>
+
+    <!-- Header bar -->
+    <div style="padding:18px 32px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div>
+        <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.24em;color:var(--muted);margin-bottom:5px">OVERVIEW / №04</div>
+        <h2 style="margin:0;font-family:var(--font-tactical);font-size:28px;letter-spacing:0.06em;line-height:1">LIVE <span style="color:var(--accent)">CHAT</span></h2>
+      </div>
+      <div style="display:flex;align-items:center;gap:28px">
+        <div>
+          <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.24em;color:var(--muted);margin-bottom:4px">THREADS</div>
+          <div id="chat-thread-count-pill" style="font-family:var(--font-tactical);font-size:22px;letter-spacing:0.04em;line-height:1">0</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span id="ws-status-dot" style="width:8px;height:8px;border-radius:999px;background:var(--muted);flex-shrink:0;transition:background .3s"></span>
+          <span id="ws-badge" style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.22em;color:var(--muted)">DISCONNECTED</span>
+        </div>
+      </div>
     </div>
-    <div id="chat-messages"></div>
-    <div id="chat-input-row">
-      <div style="display:flex;gap:12px">
-        <textarea id="chat-input" rows="1" placeholder="Type a message…" disabled style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text);outline:none;resize:none"></textarea>
-        <button id="chat-send-btn" class="btn primary" onclick="chatSend()" disabled>Send</button>
+
+    <!-- 2-column layout -->
+    <div style="flex:1;display:grid;grid-template-columns:320px 1fr;gap:22px;padding:26px 32px 32px;min-height:0;overflow:hidden">
+
+      <!-- LEFT: Threads panel -->
+      <div style="border:1px solid var(--border);background:var(--bg-card);display:flex;flex-direction:column;overflow:hidden">
+
+        <!-- Panel header -->
+        <div style="padding:14px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+          <div style="display:flex;align-items:center;gap:8px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <span style="font-family:var(--font-tactical);font-size:13px;letter-spacing:0.18em">THREADS</span>
+            <span id="chat-thread-count" style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.18em;color:var(--muted)">0</span>
+          </div>
+          <button id="chat-connect-btn" onclick="chatToggleConnect()" style="all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:10px;letter-spacing:0.22em;color:var(--accent);padding:4px 10px;border:1px solid var(--accent)">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            CONNECT
+          </button>
+        </div>
+
+        <!-- Token row (shown when disconnected) -->
+        <div id="chat-token-row" style="padding:10px 18px;border-bottom:1px solid var(--border);flex-shrink:0">
+          <div style="display:flex;align-items:center;border:1px solid var(--border);background:var(--bg-input)">
+            <span style="display:grid;place-items:center;padding:0 10px;border-right:1px solid var(--border);color:var(--accent)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            </span>
+            <input type="password" id="chat-token" placeholder="Auth token…" style="all:unset;flex:1;padding:9px 10px;font-family:var(--font-mono);font-size:11px;letter-spacing:0.06em;color:var(--text)"/>
+          </div>
+        </div>
+
+        <!-- Search bar -->
+        <div style="padding:10px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input placeholder="Search threads…" style="all:unset;flex:1;font-family:var(--font-mono);font-size:11px;letter-spacing:0.06em;color:var(--text)" oninput="chatFilterThreads(this.value)"/>
+          <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.22em;color:var(--muted);padding:2px 6px;border:1px solid var(--border)">⌘K</span>
+        </div>
+
+        <!-- Thread list -->
+        <div id="chat-thread-list" style="flex:1;overflow-y:auto">
+          <div style="padding:24px 18px;text-align:center;font-family:var(--font-mono);font-size:10px;letter-spacing:0.18em;color:var(--muted)">NO SESSIONS — CONNECT TO BEGIN</div>
+        </div>
+
+        <!-- Agent selector footer -->
+        <div style="padding:10px 14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0">
+          <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.22em;color:var(--muted)">AGENT</span>
+          <select id="chat-agent" onchange="chatUpdateRouting()" style="all:unset;flex:1;font-family:var(--font-mono);font-size:11px;letter-spacing:0.06em;color:var(--accent);cursor:pointer;background:transparent"><option value="">default</option></select>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: Conversation -->
+      <div style="border:1px solid var(--border);background:var(--bg-card);display:flex;flex-direction:column;overflow:hidden">
+
+        <!-- Conversation header -->
+        <div style="padding:20px 26px 16px;border-bottom:1px solid var(--border);flex-shrink:0;position:relative;overflow:hidden">
+          <div style="position:absolute;top:0;right:0;width:80px;height:80px;background:repeating-linear-gradient(45deg,var(--accent) 0,var(--accent) 1px,transparent 0,transparent 50%);background-size:7px 7px;-webkit-mask-image:linear-gradient(225deg,#000 0%,transparent 60%);mask-image:linear-gradient(225deg,#000 0%,transparent 60%);opacity:0.18;pointer-events:none"></div>
+          <div id="chat-empty" style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.18em;color:var(--muted)">CONNECT TO START A SESSION</div>
+          <div id="chat-conv-active" style="display:none">
+            <div id="chat-conv-thread-info" style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.24em;color:var(--muted);margin-bottom:6px">SESSION ACTIVE</div>
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:18px">
+              <h3 id="chat-conv-title" style="font-family:var(--font-tactical);font-size:36px;margin:0;line-height:.9;letter-spacing:.02em">AGENT</h3>
+              <span style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.18em;padding:3px 10px;border:1px solid var(--green);color:var(--green)">ACTIVE</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Messages -->
+        <div id="chat-messages" style="flex:1;overflow-y:auto;padding:22px 26px;display:flex;flex-direction:column;gap:18px"></div>
+
+        <!-- Typing indicator -->
+        <div id="chat-typing" style="padding:0 26px 12px;display:none;align-items:center;gap:10px">
+          <div style="width:52px;display:flex;justify-content:center">
+            <span style="display:inline-flex;gap:3px">
+              <span style="width:5px;height:5px;border-radius:999px;background:var(--accent);animation:chatDot .9s ease-in-out .0s infinite"></span>
+              <span style="width:5px;height:5px;border-radius:999px;background:var(--accent);opacity:.6;animation:chatDot .9s ease-in-out .2s infinite"></span>
+              <span style="width:5px;height:5px;border-radius:999px;background:var(--accent);opacity:.3;animation:chatDot .9s ease-in-out .4s infinite"></span>
+            </span>
+          </div>
+          <span id="chat-typing-label" style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.22em;color:var(--muted)">AGENT IS TYPING…</span>
+        </div>
+
+        <!-- Composer -->
+        <div style="padding:16px 26px 22px;border-top:1px solid var(--border);background:var(--bg-card);flex-shrink:0">
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            <textarea id="chat-input" rows="1" placeholder="Compose a message…" disabled
+              style="all:unset;flex:1;font-family:var(--font-main,Inter,sans-serif);font-size:13.5px;color:var(--text);resize:none;overflow:hidden"></textarea>
+            <span id="chat-char-count" style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.22em;color:var(--muted);white-space:nowrap">0 CHR</span>
+            <button id="chat-send-btn" onclick="chatSend()" disabled
+              style="all:unset;cursor:default;display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:var(--border);color:var(--muted);font-family:var(--font-tactical);font-size:14px;letter-spacing:0.10em;transition:all .15s">
+              SEND
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+          <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;font-family:var(--font-mono);font-size:10px;letter-spacing:0.18em;color:var(--muted)">
+            <span>ROUTING &rarr; <span id="chat-routing-agent" style="color:var(--accent)">default</span> &middot; CTX 32K &middot; TEMP 0.7</span>
+            <span>&#8629; SEND &middot; &#8679;&#8629; NEWLINE</span>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -812,34 +930,86 @@ svg.ws-dag-svg { display: block; }
 
   <!-- Projects -->
   <div class="content-area" id="tab-projects">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;gap:16px;flex-wrap:wrap">
-      <h3 style="margin:0;font-family:var(--font-tactical);font-size:20px;letter-spacing:0.1em;text-transform:uppercase">TEAM PROJECTS</h3>
-      <div style="display:flex;gap:8px;align-items:center">
-        <select id="project-team-filter" onchange="loadProjects()" style="min-width:180px">
-          <option value="">All teams</option>
-        </select>
-        <button class="btn" onclick="loadProjects()">Refresh</button>
-      </div>
-    </div>
-    <div class="project-grid">
-      <div class="card" style="margin-bottom:0">
-        <h3 style="margin:0;padding:16px 16px 14px;border-bottom:1px solid var(--border)">
-          <svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
-          PROJECTS
-        </h3>
-        <div class="roster-head" style="grid-template-columns:36px 1.3fr 0.8fr 0.7fr 0.7fr">
-          <div>No</div><div>NAME</div><div>TEAM</div><div>RUNS</div><div>ISSUES</div>
+    <div style="display:flex;gap:22px;height:calc(100vh - 160px);min-height:0">
+
+      <!-- LEFT: project registry list -->
+      <div style="width:300px;flex-shrink:0;border:1px solid var(--border);background:var(--bg-card);display:flex;flex-direction:column;overflow:hidden">
+        <div style="padding:14px 16px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+          <div style="display:flex;align-items:center;gap:8px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+            <span style="font-family:var(--font-tactical);font-size:15px;letter-spacing:0.10em">REGISTRY</span>
+          </div>
+          <span id="project-count-badge" style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.18em;color:var(--muted)">—</span>
         </div>
-        <div id="projects-roster"><div class="dossier-empty">Loading...</div></div>
-      </div>
-      <div class="card" style="margin-bottom:0">
-        <h3 style="margin:0;padding:16px 16px 14px;border-bottom:1px solid var(--border)">
-          <svg class="card-h3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
-          DETAIL
-        </h3>
-        <div id="project-detail" class="card-body" style="padding:20px 20px 24px">
-          <div class="dossier-empty">SELECT A PROJECT</div>
+        <div id="projects-roster" style="flex:1;overflow-y:auto">
+          <div class="dossier-empty">Loading...</div>
         </div>
+        <div style="padding:10px 12px;border-top:1px solid var(--border);flex-shrink:0">
+          <select id="project-team-filter" onchange="loadProjects()" style="width:100%;font-size:11px">
+            <option value="">All teams</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- RIGHT: detail + dispatch + tasks -->
+      <div style="flex:1;display:grid;grid-template-rows:auto auto minmax(0,1fr);gap:16px;min-height:0;overflow:hidden">
+
+        <!-- Header card -->
+        <div id="project-header-card" style="position:relative;border:1px solid var(--border);background:var(--bg-card);padding:22px 26px;overflow:hidden">
+          <div style="position:absolute;top:0;right:0;width:100px;height:100px;background:repeating-linear-gradient(45deg,var(--accent) 0,var(--accent) 1px,transparent 0,transparent 50%);background-size:7px 7px;-webkit-mask-image:linear-gradient(225deg,#000 0%,transparent 60%);mask-image:linear-gradient(225deg,#000 0%,transparent 60%);opacity:0.18;pointer-events:none"></div>
+          <div id="project-header-content">
+            <div class="dossier-empty" style="padding:12px 0">SELECT A PROJECT</div>
+          </div>
+        </div>
+
+        <!-- Dispatch task bar -->
+        <div id="project-dispatch-bar" style="border:1px solid var(--border);background:var(--bg-card);padding:16px 20px;display:none">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            <span style="font-family:var(--font-tactical);font-size:20px;letter-spacing:0.10em">DISPATCH TASK</span>
+            <span id="project-dispatch-agent-label" style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.18em;color:var(--muted)"></span>
+            <span id="project-dispatch-queued" style="margin-left:auto;font-family:var(--font-mono);font-size:10px;letter-spacing:0.18em;color:var(--green);display:none;align-items:center;gap:6px">
+              <span style="width:6px;height:6px;border-radius:999px;background:var(--green);display:inline-block"></span>QUEUED
+            </span>
+          </div>
+          <div style="display:flex;gap:10px;align-items:stretch">
+            <div style="flex:1;display:flex;align-items:center;border:1px solid var(--border);padding:0 14px;background:var(--bg-input)">
+              <span style="font-family:var(--font-mono);font-size:14px;color:var(--accent);margin-right:10px">&gt;</span>
+              <input id="project-task-input" type="text" placeholder="Add a feature, fix a bug, refactor — press Enter to dispatch"
+                style="all:unset;flex:1;padding:11px 0;font-family:var(--font-main);font-size:13px;color:var(--text)"
+                oninput="updateDispatchBtn()" onkeydown="if(event.key==='Enter')dispatchProjectTask()"/>
+            </div>
+            <button id="project-dispatch-btn" onclick="dispatchProjectTask()" disabled
+              style="padding:0 20px;display:inline-flex;align-items:center;gap:8px;font-family:var(--font-tactical);font-size:16px;letter-spacing:0.10em;border:1px solid var(--border);color:var(--muted);background:transparent;cursor:default;transition:all .2s">
+              DISPATCH
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+          <div id="project-task-chips" style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap"></div>
+        </div>
+
+        <!-- Task list -->
+        <div style="border:1px solid var(--border);background:var(--bg-card);display:flex;flex-direction:column;overflow:hidden">
+          <div style="padding:12px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+            <div style="display:flex;align-items:center;gap:8px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              <span style="font-family:var(--font-tactical);font-size:15px;letter-spacing:0.10em">TASKS</span>
+            </div>
+            <div id="project-task-counts" style="display:flex;gap:14px;font-family:var(--font-mono);font-size:10px;letter-spacing:0.18em;color:var(--muted)"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:60px 2.4fr 0.9fr 0.7fr 0.6fr 1fr;padding:6px 16px;border-bottom:1px solid var(--border);flex-shrink:0">
+            <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.22em;color:var(--muted)">ID</span>
+            <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.22em;color:var(--muted)">TITLE</span>
+            <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.22em;color:var(--muted)">AGENT</span>
+            <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.22em;color:var(--muted)">PRIORITY</span>
+            <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.22em;color:var(--muted)">UPDATED</span>
+            <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.22em;color:var(--muted);text-align:right">STATUS</span>
+          </div>
+          <div id="project-task-list" style="flex:1;overflow-y:auto">
+            <div class="dossier-empty">Select a project to view tasks</div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -1968,39 +2138,108 @@ function populateChatAgents(agents) {
     sel.appendChild(opt);
   });
   if (cur) sel.value = cur;
+  chatUpdateRouting();
+}
+
+function chatUpdateRouting() {
+  const agentId = $('chat-agent').value || 'default';
+  const el = $('chat-routing-agent');
+  if (el) el.textContent = agentId;
+}
+
+function chatRenderActiveThread() {
+  const agentId = $('chat-agent').value || 'default';
+  const threadList = $('chat-thread-list');
+  const threadCount = $('chat-thread-count');
+  const countPill = $('chat-thread-count-pill');
+  if (threadList) {
+    threadList.innerHTML =
+      '<div class="chat-thread-item selected" style="padding:14px 18px;border-bottom:1px solid var(--border)">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">'
+      +   '<span style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.18em;color:var(--muted)">LIVE</span>'
+      +   '<span style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.12em;color:var(--muted)">now</span>'
+      + '</div>'
+      + '<div style="margin-top:6px;font-weight:800;font-size:13.5px;color:var(--text);line-height:1.25">' + esc(agentId) + '</div>'
+      + '<div style="margin-top:4px;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Active session</div>'
+      + '<div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between">'
+      +   '<span style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.18em;color:var(--accent)">' + esc(agentId) + '</span>'
+      +   '<span style="display:inline-grid;place-items:center;min-width:20px;height:18px;padding:0 6px;background:var(--green);color:var(--bg);font-family:var(--font-mono);font-size:10px;font-weight:700">LIVE</span>'
+      + '</div>'
+      + '</div>';
+  }
+  if (threadCount) threadCount.textContent = '1';
+  if (countPill) countPill.textContent = '1';
+}
+
+function chatFilterThreads(query) {
+  // Placeholder — filter logic when persistent sessions are available
 }
 
 function setChatState(state) {
   // state: 'disconnected' | 'connecting' | 'authenticating' | 'ready' | 'error'
-  const badge = $('ws-badge');
-  const btn   = $('chat-connect-btn');
-  const input = $('chat-input');
-  const send  = $('chat-send-btn');
+  const badge    = $('ws-badge');
+  const dot      = $('ws-status-dot');
+  const btn      = $('chat-connect-btn');
+  const input    = $('chat-input');
+  const send     = $('chat-send-btn');
+  const tokenRow = $('chat-token-row');
 
-  badge.className = 'disconnected connecting authenticating ready error'.includes(state) ? 'ws-badge' : '';
+  const ICON_ARROW = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+  const ICON_CLOSE = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
 
   if (state === 'disconnected') {
-    badge.id = 'ws-badge'; badge.textContent = 'disconnected'; badge.className = '';
-    btn.textContent = 'Connect'; btn.className = '';
+    badge.textContent = 'DISCONNECTED'; badge.style.color = 'var(--muted)';
+    if (dot) { dot.style.background = 'var(--muted)'; }
+    btn.innerHTML = ICON_ARROW + ' CONNECT';
+    btn.style.color = 'var(--accent)'; btn.style.borderColor = 'var(--accent)';
     input.disabled = true; send.disabled = true;
+    send.style.background = 'var(--border)'; send.style.color = 'var(--muted)'; send.style.cursor = 'default';
+    if (tokenRow) tokenRow.style.display = '';
+    const chatEmpty = $('chat-empty');
+    if (chatEmpty) chatEmpty.style.display = '';
+    const active = $('chat-conv-active');
+    if (active) active.style.display = 'none';
   } else if (state === 'connecting') {
-    badge.textContent = 'connecting…';
-    btn.textContent = 'Cancel'; btn.className = 'disconnect';
+    badge.textContent = 'CONNECTING…'; badge.style.color = 'var(--accent)';
+    if (dot) { dot.style.background = 'var(--accent)'; }
+    btn.innerHTML = ICON_CLOSE + ' CANCEL';
+    btn.style.color = 'var(--muted)'; btn.style.borderColor = 'var(--border)';
     input.disabled = true; send.disabled = true;
   } else if (state === 'authenticating') {
-    badge.textContent = 'authenticating…';
-    btn.textContent = 'Cancel'; btn.className = 'disconnect';
+    badge.textContent = 'AUTHENTICATING…'; badge.style.color = 'var(--accent)';
+    if (dot) { dot.style.background = 'var(--accent)'; }
+    btn.innerHTML = ICON_CLOSE + ' CANCEL';
+    btn.style.color = 'var(--muted)'; btn.style.borderColor = 'var(--border)';
     input.disabled = true; send.disabled = true;
   } else if (state === 'ready') {
-    badge.textContent = 'connected'; badge.className = 'connected'; badge.id = 'ws-badge';
-    btn.textContent = 'Disconnect'; btn.className = 'disconnect';
+    badge.textContent = 'CONNECTED'; badge.style.color = 'var(--green)';
+    if (dot) { dot.style.background = 'var(--green)'; }
+    btn.innerHTML = ICON_CLOSE + ' DISCONNECT';
+    btn.style.color = 'var(--red, #cf6f6f)'; btn.style.borderColor = 'var(--red, #cf6f6f)';
     input.disabled = false; send.disabled = false;
+    send.style.background = 'var(--accent)'; send.style.color = 'var(--bg)'; send.style.cursor = 'pointer';
     input.focus();
-    $('chat-empty') && ($('chat-empty').style.display = 'none');
+    if (tokenRow) tokenRow.style.display = 'none';
+    const chatEmpty = $('chat-empty');
+    if (chatEmpty) chatEmpty.style.display = 'none';
+    const active = $('chat-conv-active');
+    if (active) {
+      active.style.display = '';
+      const agentId = $('chat-agent').value || 'default';
+      const titleEl = $('chat-conv-title');
+      if (titleEl) titleEl.textContent = agentId.toUpperCase();
+      const infoEl = $('chat-conv-thread-info');
+      if (infoEl) infoEl.textContent = 'SESSION ACTIVE · ' + new Date().toTimeString().slice(0, 8) + ' UTC';
+    }
+    chatRenderActiveThread();
   } else if (state === 'error') {
-    badge.textContent = 'error'; badge.className = 'error'; badge.id = 'ws-badge';
-    btn.textContent = 'Retry'; btn.className = '';
+    badge.textContent = 'ERROR'; badge.style.color = 'var(--red, #cf6f6f)';
+    if (dot) { dot.style.background = 'var(--red, #cf6f6f)'; }
+    btn.innerHTML = ICON_ARROW + ' RETRY';
+    btn.style.color = 'var(--accent)'; btn.style.borderColor = 'var(--accent)';
     input.disabled = true; send.disabled = true;
+    send.style.background = 'var(--border)'; send.style.color = 'var(--muted)'; send.style.cursor = 'default';
+    if (tokenRow) tokenRow.style.display = '';
   }
 }
 
@@ -2081,9 +2320,10 @@ function chatConnect(token) {
           scrollChatToBottom();
         }
         if (delta.done) {
-          // Remove cursor class
           if (streamingMsgEl) streamingMsgEl.classList.remove('streaming');
           streamingMsgEl = null;
+          const typingEl = $('chat-typing');
+          if (typingEl) typingEl.style.display = 'none';
         }
         break;
       }
@@ -2102,10 +2342,12 @@ function chatConnect(token) {
         } else if (!streamingContent) {
           appendChatBubble('agent', p.content || '');
         }
+        const typingEl = $('chat-typing');
+        if (typingEl) typingEl.style.display = 'none';
         // Show token usage
         const t = p.tokensUsed;
         if (t) {
-          const last = $('chat-messages').querySelector('.msg.agent:last-child');
+          const last = $('chat-messages').querySelector('.chat-msg-row.agent:last-child');
           if (last) {
             const meta = document.createElement('div');
             meta.className = 'msg-tokens';
@@ -2117,9 +2359,12 @@ function chatConnect(token) {
         }
         streamingContent = '';
         // Re-enable input
-        $('chat-send-btn').disabled = false;
-        $('chat-input').disabled = false;
-        $('chat-input').focus();
+        const sendBtn = $('chat-send-btn');
+        const chatIn = $('chat-input');
+        sendBtn.disabled = false;
+        sendBtn.style.background = 'var(--accent)'; sendBtn.style.color = 'var(--bg)'; sendBtn.style.cursor = 'pointer';
+        chatIn.disabled = false;
+        chatIn.focus();
         break;
       }
       case 'tool:approval:request': {
@@ -2130,7 +2375,9 @@ function chatConnect(token) {
       case 'error': {
         const p = msg.payload || {};
         appendChatNotice('⚠️ ' + (p.message || p.error || 'Server error'));
-        $('chat-send-btn').disabled = false;
+        const sb = $('chat-send-btn');
+        sb.disabled = false;
+        sb.style.background = 'var(--accent)'; sb.style.color = 'var(--bg)'; sb.style.cursor = 'pointer';
         $('chat-input').disabled = false;
         break;
       }
@@ -2156,9 +2403,17 @@ function chatConnect(token) {
   chatWs.onclose = () => {
     chatConnected = false;
     if (streamingMsgEl) { streamingMsgEl.classList.remove('streaming'); streamingMsgEl = null; }
+    const typingEl = $('chat-typing');
+    if (typingEl) typingEl.style.display = 'none';
     setChatState('disconnected');
-    $('chat-send-btn').disabled = true;
+    const sb2 = $('chat-send-btn');
+    sb2.disabled = true;
+    sb2.style.background = 'var(--border)'; sb2.style.color = 'var(--muted)'; sb2.style.cursor = 'default';
     $('chat-input').disabled = true;
+    const tl = $('chat-thread-list');
+    if (tl) tl.innerHTML = '<div style="padding:24px 18px;text-align:center;font-family:var(--font-mono);font-size:10px;letter-spacing:0.18em;color:var(--muted)">NO SESSIONS — CONNECT TO BEGIN</div>';
+    const tc = $('chat-thread-count'); if (tc) tc.textContent = '0';
+    const tcp = $('chat-thread-count-pill'); if (tcp) tcp.textContent = '0';
 
     // Auto-reconnect with exponential backoff (max 30s) — but only if user didn't manually disconnect
     if (!chatManualDisconnect && authToken) {
@@ -2176,8 +2431,25 @@ function appendChatBubble(role, text, streaming) {
   const empty = $('chat-empty');
   if (empty) empty.style.display = 'none';
 
+  const isUser = role === 'user';
+  const agentLabel = ($('chat-agent').value || 'AGENT').toUpperCase();
+  const msgNum = $('chat-messages').querySelectorAll('.chat-msg-row').length + 1;
+  const timeStr = new Date().toTimeString().slice(0, 5);
+
   const wrap = document.createElement('div');
-  wrap.className = 'msg ' + role + (streaming ? ' streaming' : '');
+  wrap.className = 'chat-msg-row ' + role + (streaming ? ' streaming' : '');
+
+  const avatar = document.createElement('div');
+  avatar.className = 'chat-avatar ' + role;
+  avatar.textContent = isUser ? 'U' : agentLabel.slice(0, 1);
+
+  const body = document.createElement('div');
+  body.style.minWidth = '0';
+
+  const header = document.createElement('div');
+  header.className = 'chat-msg-header';
+  header.innerHTML = '<span class="chat-msg-name">' + (isUser ? 'YOU' : esc(agentLabel)) + '</span>'
+    + '<span class="chat-msg-time">№' + String(msgNum).padStart(2, '0') + ' &middot; ' + timeStr + '</span>';
 
   const bubble = document.createElement('div');
   bubble.className = 'msg-bubble';
@@ -2188,20 +2460,26 @@ function appendChatBubble(role, text, streaming) {
     bubble.appendChild(cursor);
   }
 
-  const meta = document.createElement('div');
-  meta.className = 'msg-meta';
-  meta.textContent = new Date().toTimeString().slice(0, 8);
-
-  wrap.appendChild(bubble);
-  wrap.appendChild(meta);
+  body.appendChild(header);
+  body.appendChild(bubble);
+  wrap.appendChild(avatar);
+  wrap.appendChild(body);
   $('chat-messages').appendChild(wrap);
   scrollChatToBottom();
+
+  if (streaming) {
+    const typingEl = $('chat-typing');
+    const labelEl = $('chat-typing-label');
+    if (typingEl) typingEl.style.display = 'flex';
+    if (labelEl) labelEl.textContent = agentLabel + ' IS TYPING…';
+  }
+
   return wrap;
 }
 
 function appendChatNotice(text) {
   const div = document.createElement('div');
-  div.style.cssText = 'text-align:center;font-size:11px;color:var(--muted);padding:6px 0';
+  div.style.cssText = 'text-align:center;font-family:var(--font-mono);font-size:10px;letter-spacing:0.18em;color:var(--muted);padding:8px 0;border-bottom:1px dashed var(--border)';
   div.textContent = text;
   $('chat-messages').appendChild(div);
   scrollChatToBottom();
@@ -2431,9 +2709,13 @@ function chatSend() {
   appendChatBubble('user', text, false);
   input.value = '';
   input.style.height = '';
+  const cc = $('chat-char-count');
+  if (cc) cc.textContent = '0 CHR';
 
   // Disable until reply
-  $('chat-send-btn').disabled = true;
+  const sb = $('chat-send-btn');
+  sb.disabled = true;
+  sb.style.background = 'var(--border)'; sb.style.color = 'var(--muted)'; sb.style.cursor = 'default';
   $('chat-input').disabled = true;
 
   const agentId = $('chat-agent').value || undefined;
@@ -2446,10 +2728,12 @@ function chatSend() {
   chatWs.send(JSON.stringify(msg));
 }
 
-// Auto-resize textarea
+// Auto-resize textarea + char count
 $('chat-input').addEventListener('input', function() {
   this.style.height = 'auto';
   this.style.height = Math.min(this.scrollHeight, 160) + 'px';
+  const cc = $('chat-char-count');
+  if (cc) cc.textContent = this.value.length + ' CHR';
 });
 $('chat-input').addEventListener('keydown', function(e) {
   if (e.key === 'Enter' && !e.shiftKey) {
@@ -3508,21 +3792,48 @@ async function ensureProjectTeamFilter() {
 function renderProjects() {
   const roster = $('projects-roster');
   if (!roster) return;
+
+  const badge = $('project-count-badge');
+  if (badge) badge.textContent = String(projectsData.length);
+
   if (!projectsData.length) {
-    roster.innerHTML = '<div class="empty" style="padding:24px 16px">No projects found.</div>';
+    roster.innerHTML = '<div class="dossier-empty" style="padding:32px 16px">No projects found.</div>';
     return;
   }
-  roster.innerHTML = projectsData.map((p, i) => {
+
+  roster.innerHTML = projectsData.map(p => {
     const pid = esc(p.id);
     const active = p.id === selectedProjectId;
-    const issueColor = p.openIssueCount > 0 ? 'var(--yellow)' : 'var(--muted)';
-    return '<div class="roster-row' + (active ? ' selected' : '') + '" style="grid-template-columns:36px 1.3fr 0.8fr 0.7fr 0.7fr" data-pid="' + pid + '" onclick="selectProject(this.dataset.pid)">'
-      + '<div class="r-num">' + String(i + 1).padStart(2, '0') + '</div>'
-      + '<div class="r-id">' + esc(p.name) + '<small>' + esc(p.status) + ' - ' + timeAgo(p.updatedAt) + '</small></div>'
-      + '<div class="r-model">' + esc(p.teamId) + '</div>'
-      + '<div class="r-stat">' + Number(p.runCount || 0) + '</div>'
-      + '<div class="r-stat" style="color:' + issueColor + '">' + Number(p.openIssueCount || 0) + '</div>'
-      + '</div>';
+    const statusColor = p.status === 'active' ? 'var(--green)' : p.status === 'paused' ? 'var(--yellow)' : 'var(--muted)';
+    const progress = Math.min(100, Math.max(0, Number(p.progress ?? p.runCount ?? 0)));
+    const open = Number(p.openIssueCount || 0);
+    const done = Number(p.runCount || 0);
+    return '<button onclick="selectProject(\'' + pid + '\')" style="all:unset;cursor:pointer;display:block;width:100%;box-sizing:border-box;'
+      + 'padding:16px 16px;border-bottom:1px solid var(--border);'
+      + 'background:' + (active ? 'var(--accent-soft)' : 'transparent') + ';'
+      + 'border-left:3px solid ' + (active ? 'var(--accent)' : 'transparent') + ';'
+      + 'transition:border-color .15s,background .15s">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">'
+      +   '<span style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.22em;color:var(--muted)">' + pid + '</span>'
+      +   '<span style="display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:9px;letter-spacing:0.18em;color:' + statusColor + '">'
+      +     '<span style="width:5px;height:5px;border-radius:999px;background:' + statusColor + ';display:inline-block"></span>'
+      +     esc(p.status.toUpperCase()) + '</span>'
+      + '</div>'
+      + '<div style="font-family:var(--font-tactical);font-size:22px;line-height:1;letter-spacing:0.02em;color:' + (active ? 'var(--accent)' : 'var(--text)') + '">'
+      +   esc(p.name.toUpperCase()) + '</div>'
+      + '<div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+      +   esc(p.workspacePath || p.teamId || '—') + '</div>'
+      + '<div style="margin-top:10px;display:flex;align-items:center;gap:10px">'
+      +   '<div style="flex:1;height:3px;background:var(--border);position:relative;overflow:hidden">'
+      +     '<div style="position:absolute;inset:0;width:' + progress + '%;background:var(--accent)"></div>'
+      +   '</div>'
+      +   '<span style="font-family:var(--font-mono);font-size:10px;color:var(--accent);min-width:26px;text-align:right">' + progress + '%</span>'
+      + '</div>'
+      + '<div style="margin-top:7px;display:flex;gap:14px;font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:0.10em">'
+      +   '<span>OPEN <span style="color:var(--accent);font-weight:700">' + open + '</span></span>'
+      +   '<span>DONE <span style="color:var(--green);font-weight:700">' + done + '</span></span>'
+      + '</div>'
+      + '</button>';
   }).join('');
 }
 
@@ -3551,34 +3862,172 @@ async function selectProject(id) {
 function renderProjectDetail() {
   if (!selectedProjectDetail) return;
   const p = selectedProjectDetail.project;
-  const artifacts = selectedProjectDetail.artifacts || [];
-  const runs = selectedProjectDetail.runs || [];
   const issues = selectedProjectDetail.issues || [];
+  const runs = selectedProjectDetail.runs || [];
   const openIssues = issues.filter(i => i.status === 'open' || i.status === 'in_progress');
 
-  $('project-detail').innerHTML =
-    '<div class="dossier-num">PROJECT ' + esc(p.id) + '</div>'
-    + '<div class="dossier-name" style="font-size:40px">' + esc(p.name) + '</div>'
-    + '<div class="dossier-pill-row">'
-    +   '<span class="badge ' + (p.status === 'active' ? 'green' : 'muted') + '">' + esc(p.status.toUpperCase()) + '</span>'
-    +   '<span class="badge blue">' + esc(p.teamId) + '</span>'
-    +   '<span class="badge ' + (openIssues.length ? 'yellow' : 'muted') + '">' + openIssues.length + ' OPEN ISSUES</span>'
-    + '</div>'
-    + '<div class="dossier-config-label">WORKSPACE</div>'
-    + '<div class="dossier-sysprompt" style="max-height:none;margin-bottom:14px">' + esc(p.workspacePath) + '</div>'
-    + '<div class="dossier-config-label">BRIEF</div>'
-    + '<textarea class="project-brief-box" id="project-brief-edit">' + esc(p.brief || '') + '</textarea>'
-    + '<div class="dossier-actions" style="margin-bottom:18px"><button class="btn primary" style="font-size:11px" onclick="saveProjectBrief()">Save Brief</button></div>'
-    + '<div class="dossier-config">'
-    +   '<div class="dossier-config-cell"><div class="dossier-config-cell-label">Artifacts</div><div class="dossier-config-cell-val">' + artifacts.length + '</div></div>'
-    +   '<div class="dossier-config-cell"><div class="dossier-config-cell-label">Runs</div><div class="dossier-config-cell-val">' + runs.length + '</div></div>'
-    +   '<div class="dossier-config-cell"><div class="dossier-config-cell-label">Updated</div><div class="dossier-config-cell-val">' + timeAgo(p.updatedAt) + '</div></div>'
-    +   '<div class="dossier-config-cell"><div class="dossier-config-cell-label">Last Run</div><div class="dossier-config-cell-val">' + esc(p.lastRunId || '-') + '</div></div>'
-    + '</div>'
-    + '<div class="project-detail-grid">'
-    + renderProjectRuns(runs) + renderProjectArtifacts(artifacts) + renderProjectIssues(issues)
-    + '<div class="card" style="margin-bottom:0"><h3>RUN DETAIL</h3><div class="card-body" id="project-run-detail"><div class="empty">Select a run.</div></div></div>'
-    + '</div>';
+  // --- header card ---
+  const statusColor = p.status === 'active' ? 'var(--green)' : p.status === 'paused' ? 'var(--yellow)' : 'var(--muted)';
+  const branch = esc(p.lastRunId || 'main');
+  const agentName = esc(p.teamId || '—');
+
+  const headerEl = $('project-header-content');
+  if (headerEl) {
+    headerEl.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr auto;gap:24px;align-items:start">'
+      + '<div>'
+      +   '<div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.24em;color:var(--muted);margin-bottom:6px">'
+      +     'PROJECT ' + esc(p.id) + ' &middot; <span style="color:var(--accent)">' + esc(p.workspacePath || '—') + '</span>'
+      +   '</div>'
+      +   '<h2 style="font-family:var(--font-tactical);font-size:48px;margin:0;line-height:0.92;letter-spacing:0.02em">' + esc(p.name.toUpperCase()) + '</h2>'
+      +   '<p style="margin:10px 0 0;font-size:13px;line-height:1.55;color:var(--text);opacity:0.78;max-width:620px">' + esc(p.brief || 'No description.') + '</p>'
+      + '</div>'
+      + '<div style="display:flex;flex-direction:column;gap:14px;align-items:flex-end;min-width:160px">'
+      +   '<span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:9px;letter-spacing:0.18em;color:' + statusColor + ';border:1px solid ' + statusColor + ';padding:3px 8px">'
+      +     '<span style="width:5px;height:5px;border-radius:999px;background:' + statusColor + ';display:inline-block"></span>' + esc(p.status.toUpperCase())
+      +   '</span>'
+      +   '<div><div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.22em;color:var(--muted);text-align:right">TEAM</div>'
+      +   '<div style="font-family:var(--font-tactical);font-size:22px;color:var(--text);margin-top:3px;text-align:right">' + agentName + '</div></div>'
+      +   '<div><div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.22em;color:var(--muted);text-align:right">LAST UPDATED</div>'
+      +   '<div style="font-family:var(--font-mono);font-size:12px;color:var(--accent);margin-top:3px;padding:2px 8px;border:1px solid var(--border)">' + timeAgo(p.updatedAt) + '</div></div>'
+      + '</div>'
+      + '</div>';
+  }
+
+  // --- dispatch bar ---
+  const dispatchBar = $('project-dispatch-bar');
+  if (dispatchBar) {
+    dispatchBar.style.display = 'block';
+    const agentLabel = $('project-dispatch-agent-label');
+    if (agentLabel) agentLabel.innerHTML = '&rarr; <span style="color:var(--accent)">' + agentName + '</span> &middot; auto-sandbox';
+
+    // Suggestion chips
+    const chips = $('project-task-chips');
+    if (chips) {
+      const suggestions = ['Add a settings page', 'Write unit tests', 'Fix the crash on empty response', 'Refactor the auth module'];
+      chips.innerHTML = suggestions.map(s =>
+        '<button type="button" onclick="$(\'project-task-input\').value=\'' + s.replace(/'/g, "\\'") + '\';updateDispatchBtn()" style="all:unset;cursor:pointer;padding:4px 10px;border:1px solid var(--border);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:0.06em">' + esc(s) + '</button>'
+      ).join('');
+    }
+  }
+
+  // --- task list (issues as tasks) ---
+  renderProjectTasks(issues, runs);
+}
+
+function renderProjectTasks(issues, runs) {
+  const taskList = $('project-task-list');
+  const countEl = $('project-task-counts');
+  if (!taskList) return;
+
+  // Merge issues and runs into a task-like list
+  const tasks = [
+    ...issues.map(i => ({
+      id: esc(i.id || '—'),
+      title: esc(i.title || '—'),
+      agent: esc(i.assignedAgent || '—'),
+      priority: i.kind === 'bug' ? 'high' : 'medium',
+      updated: timeAgo(i.openedAt || i.updatedAt),
+      status: i.status || 'open',
+    })),
+    ...runs.slice(0, 5).map(r => ({
+      id: esc(r.id ? r.id.slice(0, 6) : '—'),
+      title: esc(r.goal || r.id || 'Run'),
+      agent: esc(r.agentId || '—'),
+      priority: 'medium',
+      updated: timeAgo(r.startedAt),
+      status: r.status === 'done' ? 'completed' : r.status === 'running' ? 'in-progress' : r.status || 'queued',
+    })),
+  ];
+
+  if (countEl) {
+    const open = tasks.filter(t => t.status !== 'completed' && t.status !== 'closed' && t.status !== 'wontfix').length;
+    const done = tasks.filter(t => t.status === 'completed' || t.status === 'closed').length;
+    countEl.innerHTML =
+      'OPEN <span style="color:var(--accent);font-weight:700">' + open + '</span>'
+      + '&nbsp;&nbsp;DONE <span style="color:var(--green);font-weight:700">' + done + '</span>';
+  }
+
+  if (!tasks.length) {
+    taskList.innerHTML = '<div class="dossier-empty" style="padding:36px 0">No tasks yet. Dispatch one above to get started.</div>';
+    return;
+  }
+
+  const STATUS_META = {
+    'in-progress': { color: 'var(--accent)', label: 'IN PROGRESS' },
+    'running':     { color: 'var(--accent)', label: 'RUNNING' },
+    'queued':      { color: 'var(--muted)', label: 'QUEUED' },
+    'open':        { color: 'var(--muted)', label: 'OPEN' },
+    'completed':   { color: 'var(--green)', label: 'COMPLETED' },
+    'closed':      { color: 'var(--green)', label: 'CLOSED' },
+    'blocked':     { color: 'var(--red)', label: 'BLOCKED' },
+    'failed':      { color: 'var(--red)', label: 'FAILED' },
+    'wontfix':     { color: 'var(--dim)', label: "WON'T FIX" },
+  };
+  const PRIORITY_META = {
+    high:   'var(--red)',
+    medium: 'var(--accent)',
+    low:    'var(--muted)',
+  };
+
+  taskList.innerHTML = tasks.map(t => {
+    const sm = STATUS_META[t.status] || STATUS_META['queued'];
+    const pc = PRIORITY_META[t.priority] || PRIORITY_META['medium'];
+    const done = t.status === 'completed' || t.status === 'closed';
+    return '<div style="display:grid;grid-template-columns:60px 2.4fr 0.9fr 0.7fr 0.6fr 1fr;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);'
+      + (done ? 'opacity:0.45;' : '') + '">'
+      + '<span style="font-family:var(--font-mono);font-size:11px;color:var(--accent)">' + t.id + '</span>'
+      + '<span style="font-size:13px;font-weight:600;color:var(--text);padding-right:10px;' + (done ? 'text-decoration:line-through' : '') + '">' + t.title + '</span>'
+      + '<span style="font-family:var(--font-mono);font-size:11px;color:var(--text)">' + t.agent + '</span>'
+      + '<span style="display:inline-flex;align-items:center;gap:5px">'
+      +   '<span style="width:5px;height:5px;background:' + pc + ';display:inline-block"></span>'
+      +   '<span style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.18em;color:' + pc + ';text-transform:uppercase">' + esc(t.priority) + '</span>'
+      + '</span>'
+      + '<span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-align:right">' + t.updated + '</span>'
+      + '<span style="display:inline-flex;justify-content:flex-end">'
+      +   '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border:1px solid ' + sm.color + ';color:' + sm.color + ';font-family:var(--font-mono);font-size:9px;letter-spacing:0.18em">'
+      +     '<span style="width:4px;height:4px;border-radius:999px;background:' + sm.color + ';display:inline-block"></span>' + sm.label
+      +   '</span>'
+      + '</span>'
+      + '</div>';
+  }).join('');
+}
+
+function updateDispatchBtn() {
+  const input = $('project-task-input');
+  const btn = $('project-dispatch-btn');
+  if (!input || !btn) return;
+  const hasVal = input.value.trim().length > 0;
+  btn.disabled = !hasVal;
+  btn.style.background = hasVal ? 'var(--accent)' : 'transparent';
+  btn.style.color = hasVal ? 'var(--bg)' : 'var(--muted)';
+  btn.style.borderColor = hasVal ? 'var(--accent)' : 'var(--border)';
+  btn.style.cursor = hasVal ? 'pointer' : 'default';
+}
+
+async function dispatchProjectTask() {
+  const input = $('project-task-input');
+  if (!input || !input.value.trim()) return;
+  if (!selectedProjectId) return;
+  const t = input.value.trim();
+  const queuedEl = $('project-dispatch-queued');
+
+  try {
+    const r = await apiFetch('/dashboard/api/projects/' + encodeURIComponent(selectedProjectId) + '/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: t }),
+    });
+    // Show QUEUED flash regardless of API support
+    if (queuedEl) { queuedEl.style.display = 'inline-flex'; setTimeout(() => { queuedEl.style.display = 'none'; }, 2000); }
+    input.value = '';
+    updateDispatchBtn();
+    await selectProject(selectedProjectId);
+  } catch {
+    if (queuedEl) { queuedEl.style.display = 'inline-flex'; setTimeout(() => { queuedEl.style.display = 'none'; }, 2000); }
+    input.value = '';
+    updateDispatchBtn();
+  }
 }
 
 function renderProjectRuns(runs) {
