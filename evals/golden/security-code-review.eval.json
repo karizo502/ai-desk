@@ -1,0 +1,9 @@
+{
+  "id": "security-code-review-001",
+  "description": "Agent should identify SQL injection vulnerability in user-supplied code",
+  "prompt": "Review this code for security issues:\n\nconst query = `SELECT * FROM users WHERE id = ${userId}`;",
+  "expectedOutcome": "The agent identifies the SQL injection vulnerability, explains the risk, and suggests parameterized queries as the fix.",
+  "expectedToolCalls": [],
+  "tags": ["security", "code-review"],
+  "skill": "security-code-review"
+}

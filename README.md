@@ -27,6 +27,7 @@ Ai\_DESK is a self-hosted AI agent gateway that sits between you and the AI prov
 - **Messaging platform bots** (Telegram, Discord) that route to your agents
 - **Token and cost budgets** with hard caps and automatic failover to cheaper models
 - **Tool execution** in isolated sandboxes with an explicit allowlist policy
+- **Autonomous skill creation** — agents learn from their own sessions and synthesize reusable skills automatically
 - **A web dashboard** for real-time monitoring, credentials management, and configuration
 
 The guiding principle: every secret is encrypted, every tool call is checked against policy, every user input is scanned for threats.
@@ -57,6 +58,19 @@ The guiding principle: every secret is encrypted, every tool call is checked aga
 - Team coordination with role-based delegation
 - Session persistence and replay
 
+### Autonomous Skill Creation
+- **Auto-synthesis** — agent sessions with enough tool calls are automatically synthesized into reusable skills (fire-and-forget, never blocks the hot path)
+- **Skill registry** — skills persist as `*.skill.json` files; disabled by default until explicitly approved
+- **Approval flow** — generated skills require human review before activation (`skill review` + `skill approve`)
+- **Anti-skills (`kind: "avoid"`)** — synthesized from failure traces; injected as a cautionary "AVOID patterns" block in the system prompt
+- **Self-improvement** — underperforming skills (high failure rate) are automatically revised; sandbox gate rejects regressions
+- **Lifecycle management** — TTL expiry, negative-ROI archiving, LRU pruning when enabled count exceeds per-agent cap
+- **Conflict detection** — Jaccard topic-overlap and imperative contradiction checks prevent conflicting skills from being active together
+- **Skill merger** — combine two compatible skills into a single consolidated skill
+- **Multi-agent scope** — skills can be scoped `global`, `project`, or `agent`-level with an explicit allowlist
+- **Evaluation harness** — golden task `*.eval.json` files scored by an LLM judge per skill
+- **Export / Import** — portable bundle format with SHA-256 checksum; PII scrubbed on export
+
 ### Integrations
 - Telegram and Discord bots (per-bot agent routing, typing indicator, concurrency locking)
 - Skills — modular capability bundles that inject tools, system-prompt fragments, and MCP servers
@@ -75,8 +89,6 @@ The guiding principle: every secret is encrypted, every tool call is checked aga
 ### Install
 
 ```bash
-
-# install globally
 npm install -g ai-desk@latest
 ```
 
@@ -84,12 +96,11 @@ npm install -g ai-desk@latest
 
 ```bash
 ai-desk onboard        # interactive setup wizard
-
 ```
 
 On first run without a config file the gateway opens a setup wizard at `http://127.0.0.1:18789/setup`. Complete it to generate `ai-desk.json` and your first auth token.
 
-Dashboard: `http://127.0.0.1:18789/dashboard`
+Dashboard: `http://127.0.0.1:18789/dashboard`  
 Login: `http://127.0.0.1:18789/login`
 
 ### Background Daemon
@@ -166,16 +177,33 @@ ai-desk daemon restart
       {
         "id": "main",
         "default": true,
-        "workspace": "."
+        "workspace": ".",
+        "skills": ["security-code-review"]  // skills active for this agent
       }
     ]
+  },
+
+  "skillSynthesis": {
+    "model": "anthropic/claude-sonnet-4-6",
+    "improvementModel": "anthropic/claude-sonnet-4-6",
+    "scrubModel": "anthropic/claude-haiku-4-5",
+    "fallbackToHaikuUnderBudget": true,
+    "maxPerDay": 5,                    // max auto-syntheses per day
+    "minGapMinutes": 15,               // min time between syntheses
+    "autoTriggerMinToolCalls": 8,      // synthesize after sessions with >= N tool calls
+    "failureRateThreshold": 0.4,       // improve skills with failure rate above this
+    "minUsesBeforeImprovement": 30,    // minimum uses before improvement is considered
+    "ttlDays": 60,                     // archive generated skills unused for this long
+    "maxEnabledPerAgent": 15,          // LRU-prune when enabled count exceeds this
+    "maxGeneratedTotal": 50,
+    "deprecateAfterNegativeUses": 10   // archive if avg token savings is negative
   },
 
   "messaging": {
     "telegram": {
       "enabled": true,
       "agentId": "main",
-      "allowedChatIds": []   // empty = accept all chats
+      "allowedChatIds": []
     },
     "discord": {
       "enabled": true,
@@ -236,14 +264,58 @@ ai-desk cache clear
 ai-desk cache purge                      # purge expired entries
 ```
 
-### Skills & MCP
+### Skills
 
 ```bash
-ai-desk skill list
+# Discovery & status
+ai-desk skill list                       # list all loaded skills
+ai-desk skill list-generated             # list generated skills and approval status
+ai-desk skill info <name>                # full details for a skill
+ai-desk skill review <name>              # review a generated skill (diff vs parent)
+
+# Enable / disable
 ai-desk skill enable <name>
 ai-desk skill disable <name>
-ai-desk skill info <name>
 
+# Approval flow (generated skills)
+ai-desk skill approve <name>
+ai-desk skill reject <name>
+ai-desk skill archive <name>
+
+# Synthesis
+ai-desk skill synthesize --from-session <id>           # synthesize from a session trace
+ai-desk skill synthesize --from-session <id> --negative  # synthesize an anti-skill (kind=avoid)
+ai-desk skill synthesize --from-session <id> --dry-run   # preview without writing
+
+# Self-improvement
+ai-desk skill improve                    # improve all qualifying skills
+ai-desk skill improve --name <name>      # improve a specific skill
+ai-desk skill improve --dry-run
+
+# Merge
+ai-desk skill merge-candidates           # list pairs recommended for merging
+ai-desk skill merge <nameA> <nameB>      # merge two skills into one
+ai-desk skill merge <nameA> <nameB> --name my-merged --archive-sources
+
+# Scope
+ai-desk skill scope <name> --set project                        # project-wide (default)
+ai-desk skill scope <name> --set agent --allow-agent <agentId>  # restrict to specific agent
+ai-desk skill scope <name> --set global                         # all agents
+
+# Evaluation
+ai-desk skill eval <name>                # run golden task evals for a skill
+ai-desk skill eval --all                 # evaluate all enabled skills
+ai-desk skill eval --tag security        # filter evals by tag
+
+# Export / Import
+ai-desk skill export <name>              # export as portable bundle JSON
+ai-desk skill export <name> --out my-skill.bundle.json
+ai-desk skill import <bundle-path>       # import and register for approval
+```
+
+### MCP
+
+```bash
 ai-desk mcp list
 ai-desk mcp test <serverName>
 ```
@@ -265,6 +337,80 @@ ai-desk security audit                   # comprehensive security recommendation
 
 ---
 
+## Autonomous Skill Creation
+
+AI\_DESK can observe its own agent sessions and synthesize reusable **skills** — JSON bundles that extend future agents with learned instructions and tool permissions.
+
+### How it works
+
+```
+Agent session (≥ 8 tool calls, successful)
+  → Auto-trigger (fire-and-forget, non-blocking)
+  → PII scrub
+  → LLM synthesis (skill-synthesis.v1.md prompt)
+  → Schema validation (no mcpServer, provenance=generated)
+  → Dedup check (Jaccard similarity vs existing skills)
+  → Written to skills/generated/<name>.skill.json
+  → Registered as pendingApproval=true
+  → Human reviews and approves via CLI or dashboard
+  → Skill enabled → injected into agent system prompt
+```
+
+### Skill kinds
+
+| Kind | Behaviour |
+|------|-----------|
+| `positive` | Capability addition — appended to the main system prompt |
+| `avoid` | Cautionary anti-skill — injected as a separate "AVOID patterns" block; synthesized from failure traces using `--negative` |
+
+### Lifecycle
+
+| Check | Trigger | Action |
+|-------|---------|--------|
+| Negative ROI | `avgTokensSaved < 0` for ≥ N uses | Archive |
+| TTL expiry | Not used within `ttlDays` | Archive |
+| LRU prune | Enabled count > `maxEnabledPerAgent` | Disable oldest |
+| Self-improvement | Failure rate > threshold | LLM revision → sandbox gate → pending approval |
+
+### Skill bundle format
+
+```json
+{
+  "name": "sql-query-optimizer",
+  "version": "1.0.0",
+  "description": "Guides the agent to write efficient SQL with proper indexing hints.",
+  "tags": ["sql", "database", "performance"],
+  "systemPromptAddition": "When writing SQL queries:\n1. ...",
+  "toolAllowlist": ["read_file", "bash"],
+  "provenance": "generated",
+  "revision": 1,
+  "kind": "positive",
+  "scope": "project",
+  "sourceSessionId": "sess-abc123",
+  "traceHash": "a1b2c3d4e5f6a1b2",
+  "createdAt": 1746000000000
+}
+```
+
+### Golden task evaluations
+
+Place `*.eval.json` files in `evals/golden/` to score skills against expected outcomes:
+
+```json
+{
+  "id": "security-review-001",
+  "description": "Agent should identify SQL injection",
+  "prompt": "Review this code: SELECT * FROM users WHERE id = ${userId}",
+  "expectedOutcome": "Agent identifies SQL injection and suggests parameterized queries.",
+  "tags": ["security"],
+  "skill": "security-code-review"
+}
+```
+
+Run with: `ai-desk skill eval security-code-review`
+
+---
+
 ## AI Providers & Models
 
 | Provider | Models | Auth |
@@ -273,7 +419,7 @@ ai-desk security audit                   # comprehensive security recommendation
 | **Google** | `gemini-2.5-flash`, `gemini-2.0-pro`, `gemini-1.5-pro` | `GOOGLE_AI_API_KEY` |
 | **OpenRouter** | 200+ models (`openrouter/anthropic/...`, `openrouter/openai/gpt-4o`, …) | `OPENROUTER_API_KEY` |
 
-**Model routing:** each agent has a primary model and an ordered failover chain. Sub-agents default to the configured sub-agent model (typically Gemini Flash) to keep costs low. The compaction model (used for summarising history) defaults to Haiku.
+**Model routing:** each agent has a primary model and an ordered failover chain. Sub-agents default to the configured sub-agent model (typically Gemini Flash) to keep costs low. The compaction model (used for summarising history) defaults to Haiku. Skill synthesis falls back to Haiku automatically when budget is running low.
 
 ---
 
@@ -304,7 +450,7 @@ Access at `http://127.0.0.1:18789/dashboard` (requires auth token).
 | **Agents** | Agent list, status, session count; edit config with hot-reload |
 | **Teams** | Team definitions and role assignments |
 | **Roles** | Role registry with system-prompt fragments and delegation rules |
-| **Skills** | Enable/disable skill bundles; view tool allowlists |
+| **Skills** | Enable/disable skills; view pending approvals, conflicts, metrics, and tool allowlists |
 | **MCP Servers** | Connected external tool servers and their status |
 | **Messaging** | Telegram/Discord connections; add per-agent bots |
 | **Chat** | Live WebSocket chat with any configured agent |
@@ -315,6 +461,18 @@ Access at `http://127.0.0.1:18789/dashboard` (requires auth token).
 | **Credentials** | Encrypted key storage for Anthropic, Google, OpenRouter |
 
 Real-time updates are delivered via Server-Sent Events (SSE). The dashboard reconnects automatically with exponential backoff.
+
+### Skills dashboard API
+
+```
+GET  /dashboard/api/skills                  list all skills
+GET  /dashboard/api/skills/pending          skills awaiting approval
+GET  /dashboard/api/skills/conflicts        conflict audit across pending skills
+GET  /dashboard/api/skills/:name            single skill detail
+POST /dashboard/api/skills/:name/approve
+POST /dashboard/api/skills/:name/reject
+POST /dashboard/api/skills/:name/archive
+```
 
 ---
 
@@ -348,8 +506,16 @@ All tool execution runs in isolated child processes:
 - Environment sanitised — secrets stripped before spawning
 - Output limited to 1 MB per call
 
+### Skill Security Invariants
+Generated skills enforce strict security guarantees that cannot be bypassed:
+- `mcpServer` is **never** allowed in generated skills — only builtin/user skills may spawn external processes
+- `toolAllowlist` must be a **subset** of the tools the source session was permitted to use
+- All skills start with `enabled: false` and `pendingApproval: true` — explicit human approval required
+- PII is scrubbed from session traces **before** any data reaches the LLM
+- Synthesis is rate-limited per agent (configurable `maxPerDay` + `minGapMinutes`)
+
 ### Audit Log
-- Every authentication event, tool call, budget violation, and threat detection is recorded
+- Every authentication event, tool call, budget violation, skill synthesis, and threat detection is recorded
 - Hash chain: each entry includes the SHA-256 of the previous entry
 - Integrity can be verified at any time from the dashboard or CLI
 - Stored in `.ai-desk-data/audit.db`
@@ -372,7 +538,7 @@ All tool execution runs in isolated child processes:
 │  Gateway Server                                         │
 │  ├── Auth Manager       (token validation, lockout)     │
 │  ├── Rate Limiter       (per-IP, per-connection)        │
-│  ├── Dashboard Server   (HTTP + SSE)                    │
+│  ├── Dashboard Server   (HTTP + SSE + Skill API)        │
 │  └── WebSocket Handler  (streaming chat)                │
 └───────────────────────┬─────────────────────────────────┘
                         │
@@ -385,7 +551,8 @@ All tool execution runs in isolated child processes:
 │  ├── Model Router       (primary + failover chain)      │
 │  ├── Tool Executor      (policy check → sandbox)        │
 │  ├── Sub-agent Spawner  (recursive, depth-limited)      │
-│  └── Session Store      (encrypted persistence)         │
+│  ├── Session Store      (encrypted persistence)         │
+│  └── Skill Auto-Trigger (fire-and-forget synthesis)     │
 └───────────┬─────────────────────┬───────────────────────┘
             │                     │
 ┌───────────▼──────────┐ ┌───────▼──────────────────────┐
@@ -394,6 +561,20 @@ All tool execution runs in isolated child processes:
 │  ├── Google Gemini   │ │  ├── MCP servers              │
 │  └── OpenRouter      │ │  └── Skills                   │
 └──────────────────────┘ └───────────────────────────────┘
+                                  │
+          ┌───────────────────────▼──────────────────────┐
+          │  Autonomous Skill System                      │
+          │  ├── Skill Trace Store   (SQLite FTS5)        │
+          │  ├── Skill Synthesizer   (positive + avoid)   │
+          │  ├── Skill Improver      (self-revision)      │
+          │  ├── Skill Merger        (combine skills)     │
+          │  ├── Skill Evaluator     (golden task evals)  │
+          │  ├── Skill Lifecycle Mgr (TTL / LRU / ROI)   │
+          │  ├── Conflict Detector   (Jaccard + imperatives)
+          │  ├── Skill Sandbox       (LLM judge gate)     │
+          │  ├── Skill Registry      (state persistence)  │
+          │  └── Export / Import     (bundle + checksum)  │
+          └───────────────────────────────────────────────┘
 ```
 
 **Request path (happy path):**
@@ -403,12 +584,13 @@ User message
   → Threat scanner
   → Cache lookup          ← hit: return immediately
   → Budget check
+  → Skill system prompt   ← positive skills + AVOID block injected
   → Model router → API call (streaming)
   → Tool calls → Policy check → Approval? → Sandbox → recurse
-  → Session save (encrypted)
-  → Budget deduct
+  → Session save (encrypted) + trace recorded
+  → Budget deduct + skill metrics updated
+  → Auto-trigger synthesis? (fire-and-forget if ≥ N tool calls)
   → Response streamed back
 ```
 
 ---
-

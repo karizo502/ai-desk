@@ -269,6 +269,40 @@ export const NotificationsConfigSchema = Type.Object({
 });
 export type NotificationsConfig = Static<typeof NotificationsConfigSchema>;
 
+// ─── Skill Synthesis ──────────────────────────────────────
+export const SkillSynthesisConfigSchema = Type.Object({
+  /** Model used to synthesize new skills from session traces */
+  model: Type.String({ default: 'anthropic/claude-sonnet-4-6' }),
+  /** Model used to revise/improve existing skills */
+  improvementModel: Type.String({ default: 'anthropic/claude-sonnet-4-6' }),
+  /** Lightweight model used for PII scrubbing before synthesis */
+  scrubModel: Type.String({ default: 'anthropic/claude-haiku-4-5' }),
+  /** Downgrade to scrubModel when budget is low instead of rejecting */
+  fallbackToHaikuUnderBudget: Type.Boolean({ default: true }),
+  /** Max number of skills synthesized per day */
+  maxPerDay: Type.Number({ default: 5, minimum: 1 }),
+  /** Minimum minutes between consecutive synthesis runs */
+  minGapMinutes: Type.Number({ default: 15, minimum: 1 }),
+  /** Auto-trigger synthesis after a task uses at least this many tool calls */
+  autoTriggerMinToolCalls: Type.Number({ default: 8, minimum: 2 }),
+  /** Fraction of uses that must be failures before the improver kicks in */
+  failureRateThreshold: Type.Number({ default: 0.4, minimum: 0.0, maximum: 1.0 }),
+  /** Minimum number of uses before considering a skill for improvement */
+  minUsesBeforeImprovement: Type.Number({ default: 30, minimum: 5 }),
+  /** Days of inactivity before a generated skill is auto-archived */
+  ttlDays: Type.Number({ default: 60, minimum: 1 }),
+  /** Max number of enabled skills per agent (LRU eviction beyond this) */
+  maxEnabledPerAgent: Type.Number({ default: 15, minimum: 1 }),
+  /** Max total generated skills before archiving is required */
+  maxGeneratedTotal: Type.Number({ default: 50, minimum: 1 }),
+  /**
+   * Archive a skill automatically when avgTokensSaved stays negative
+   * for this many consecutive uses.
+   */
+  deprecateAfterNegativeUses: Type.Number({ default: 10, minimum: 1 }),
+});
+export type SkillSynthesisConfig = Static<typeof SkillSynthesisConfigSchema>;
+
 // ─── Root Config ──────────────────────────────────────────
 export const AiDeskConfigSchema = Type.Object({
   gateway: GatewayConfigSchema,
@@ -279,5 +313,6 @@ export const AiDeskConfigSchema = Type.Object({
   notifications: Type.Optional(NotificationsConfigSchema),
   memory: Type.Optional(MemoryConfigSchema),
   cache: Type.Optional(CacheConfigSchema),
+  skillSynthesis: Type.Optional(SkillSynthesisConfigSchema),
 });
 export type AiDeskConfig = Static<typeof AiDeskConfigSchema>;

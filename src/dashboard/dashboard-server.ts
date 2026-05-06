@@ -25,6 +25,8 @@ import { SessionRoutes } from './session-routes.js';
 import type { SessionStore } from '../sessions/session-store.js';
 import { ConnectionRoutes } from './connection-routes.js';
 import { ProjectRoutes } from './project-routes.js';
+import { SkillRoutes } from './skill-routes.js';
+import type { SkillRegistry } from '../skills/skill-registry.js';
 import type { ConnectionStore } from './connection-store.js';
 import { eventBus } from '../shared/events.js';
 import type { CredentialStore } from '../auth/credential-store.js';
@@ -64,6 +66,9 @@ export interface SkillSnapshot {
   version: string;
   enabled: boolean;
   description: string;
+  pendingApproval?: boolean;
+  provenance?: string;
+  metrics?: import('../skills/skill.js').SkillMetrics;
 }
 
 export interface McpServerSnapshot {
@@ -115,6 +120,7 @@ export class DashboardServer {
   private sessionRoutes: SessionRoutes | null = null;
   private connectionRoutes: ConnectionRoutes | null = null;
   private projectRoutes: ProjectRoutes | null = null;
+  private skillRoutes: SkillRoutes | null = null;
   private auditLog: AuditLog | null = null;
   private workspaceTracker: WorkspaceTracker;
   private workspaceRoutes: WorkspaceRoutes;
@@ -137,6 +143,7 @@ export class DashboardServer {
       projectStore?: ProjectStore;
       issueStore?: IssueStore;
       teamCoordinator?: TeamCoordinator;
+      skillRegistry?: SkillRegistry;
     },
   ) {
     this.snapshotFn = snapshotFn;
@@ -176,6 +183,9 @@ export class DashboardServer {
         opts.issueStore ?? null,
         opts.teamCoordinator ?? null,
       );
+    }
+    if (opts?.skillRegistry) {
+      this.skillRoutes = new SkillRoutes(opts.skillRegistry);
     }
 
     // Forward every gateway event to SSE clients
@@ -245,6 +255,7 @@ export class DashboardServer {
     if (this.cronRoutes?.handle(req, res)) return true;
     if (this.sessionRoutes?.handle(req, res)) return true;
     if (this.connectionRoutes?.handle(req, res)) return true;
+    if (this.skillRoutes?.handle(req, res)) return true;
 
     if (url === '/dashboard' || url === '/dashboard/') {
       res.writeHead(200, {

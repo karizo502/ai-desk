@@ -45,6 +45,9 @@ import { MessagingManager } from '../messaging/messaging-manager.js';
 import { SkillRegistry } from '../skills/skill-registry.js';
 import { McpServer } from '../mcp/mcp-server.js';
 import { MemoryStore } from '../memory/memory-store.js';
+import { SkillTraceStore } from '../memory/skill-trace-store.js';
+import { SkillRateLimiter } from '../skills/skill-rate-limit.js';
+import { SkillSynthesizer } from '../skills/skill-synthesizer.js';
 import 'dotenv/config';
 
 const __pkgRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -798,6 +801,368 @@ skillCmd
   });
 
 skillCmd
+  .command('list-generated')
+  .description('List generated (synthesized) skills and their approval status')
+  .option('--skills-dir <path>', 'Skills directory', 'skills')
+  .action(async (opts) => {
+    const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
+    const generatedDir = resolve(opts.skillsDir, 'generated');
+    const registry = new SkillRegistry(dataDir, [opts.skillsDir, generatedDir, __pkgSkills]);
+    await registry.init();
+    const generated = registry.listGenerated();
+
+    console.log(`\n🔬 Generated Skills (${generated.length}):\n`);
+    if (generated.length === 0) {
+      console.log('   No generated skills found. Run: ai-desk skill synthesize --from-session <id>\n');
+      return;
+    }
+
+    for (const s of generated) {
+      const pending = s.state.pendingApproval ? '⏳ pending' : s.state.enabled ? '🟢 enabled' : '⚫ disabled';
+      const d = s.definition;
+      console.log(`   ${pending}  ${d.name} v${d.version}`);
+      console.log(`      ${d.description}`);
+      if (d.sourceSessionId) console.log(`      Session: ${d.sourceSessionId}`);
+      if (d.tags?.length) console.log(`      Tags:    ${d.tags.join(', ')}`);
+      const m = s.state.metrics;
+      if (m && m.uses > 0) {
+        const rate = ((m.successes / m.uses) * 100).toFixed(0);
+        console.log(`      Metrics: ${m.uses} uses, ${rate}% success`);
+      }
+      console.log('');
+    }
+  });
+
+skillCmd
+  .command('synthesize')
+  .description('Synthesize a new skill from a recorded session trace')
+  .requiredOption('--from-session <id>', 'Session ID to synthesize from')
+  .option('--dry-run', 'Preview output without writing to disk', false)
+  .option('--negative', 'Synthesize an anti-skill (kind="avoid") from a failure trace', false)
+  .option('--skills-dir <path>', 'Skills directory', 'skills')
+  .option('-c, --config <path>', 'Config file path', 'ai-desk.json')
+  .action(async (opts) => {
+    const masterKey = requireMasterKey();
+    const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
+    const { config } = loadConfig(opts.config);
+    const synthCfg = config.skillSynthesis ?? {
+      model: 'anthropic/claude-sonnet-4-6',
+      improvementModel: 'anthropic/claude-sonnet-4-6',
+      scrubModel: 'anthropic/claude-haiku-4-5',
+      fallbackToHaikuUnderBudget: true,
+      maxPerDay: 5,
+      minGapMinutes: 15,
+      autoTriggerMinToolCalls: 8,
+      failureRateThreshold: 0.4,
+      minUsesBeforeImprovement: 30,
+      ttlDays: 60,
+      maxEnabledPerAgent: 15,
+      maxGeneratedTotal: 50,
+      deprecateAfterNegativeUses: 10,
+    };
+
+    const credStore = new CredentialStore(dataDir, masterKey);
+    const router = new ModelRouter(config.agents.defaults.model, config.agents.defaults.subagents.model, credStore);
+    const available = router.status().filter(p => p.available);
+    if (available.length === 0) {
+      console.error('\n❌ No model providers available. Set ANTHROPIC_API_KEY or GOOGLE_AI_API_KEY.\n');
+      process.exit(1);
+    }
+
+    const budget = new BudgetTracker(dataDir, config.agents.defaults.budget);
+    const traceStore = new SkillTraceStore(dataDir);
+    const generatedDir = resolve(opts.skillsDir, 'generated');
+    const registry = new SkillRegistry(dataDir, [opts.skillsDir, generatedDir, __pkgSkills]);
+    await registry.init();
+    const rateLimiter = new SkillRateLimiter(dataDir, { maxPerDay: synthCfg.maxPerDay, minGapMinutes: synthCfg.minGapMinutes });
+
+    const synthesizer = new SkillSynthesizer({
+      traceStore, registry, router, budget, rateLimiter, config: synthCfg,
+      outputDir: generatedDir,
+    });
+
+    const synthesisKind = opts.negative ? 'avoid' : 'positive';
+    console.log(`\n🔬 ${opts.dryRun ? '[DRY RUN] ' : ''}Synthesizing ${synthesisKind === 'avoid' ? 'anti-skill' : 'skill'} from session: ${opts.fromSession}\n`);
+
+    const result = await synthesizer.synthesize([opts.fromSession], {
+      dryRun: opts.dryRun,
+      agentId: 'cli',
+      projectRoot: process.cwd(),
+      synthesisKind,
+    });
+
+    if (result.rateLimited) {
+      console.error(`❌ Rate limited: ${result.errors?.join('\n')}\n`);
+      budget.close();
+      process.exit(1);
+    }
+    if (result.budgetBlocked) {
+      console.error(`❌ Budget blocked: ${result.errors?.join('\n')}\n`);
+      budget.close();
+      process.exit(1);
+    }
+    if (result.errors?.length) {
+      console.error(`❌ Synthesis failed:\n${result.errors.join('\n')}\n`);
+      budget.close();
+      process.exit(1);
+    }
+    if (result.isDuplicate) {
+      console.log(`⚠️  Similar skill already exists: ${result.duplicateOf}`);
+      console.log(`   Generated skill was not saved (high similarity detected).\n`);
+      budget.close();
+      return;
+    }
+
+    const d = result.skill!;
+    const kindLabel = d.kind === 'avoid' ? 'Anti-skill' : 'Skill';
+    console.log(`✅ ${kindLabel} synthesized: ${d.name} v${d.version}`);
+    console.log(`   ${d.description}`);
+    if (d.tags?.length) console.log(`   Tags: ${d.tags.join(', ')}`);
+    if (d.toolAllowlist?.length) console.log(`   Tools: ${d.toolAllowlist.join(', ')}`);
+    if (d.kind === 'avoid') console.log(`   Kind: avoid (cautionary — injected in AVOID block)`);
+    if (result.filePath) console.log(`   Written to: ${result.filePath}`);
+    if (result.dryRun) {
+      console.log('\n   [DRY RUN] Skill was NOT written to disk or registered.');
+      console.log('   Remove --dry-run to save it.\n');
+    } else {
+      console.log('\n   Skill is pending approval. Run:');
+      console.log(`     ai-desk skill review ${d.name}`);
+      console.log(`     ai-desk skill approve ${d.name}\n`);
+    }
+
+    budget.close();
+  });
+
+skillCmd
+  .command('review <name>')
+  .description('Review a generated skill definition and show diff vs parent')
+  .option('--skills-dir <path>', 'Skills directory', 'skills')
+  .action(async (name, opts) => {
+    const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
+    const generatedDir = resolve(opts.skillsDir, 'generated');
+    const registry = new SkillRegistry(dataDir, [opts.skillsDir, generatedDir, __pkgSkills]);
+    await registry.init();
+    const skill = registry.get(name);
+    if (!skill) {
+      console.error(`\n❌ Skill "${name}" not found.\n`);
+      process.exit(1);
+    }
+
+    const d = skill.definition;
+    const state = skill.state;
+    const statusStr = state.pendingApproval ? '⏳ pending approval'
+      : state.enabled ? '🟢 enabled' : '⚫ disabled';
+
+    console.log(`\n🔬 Skill Review: ${d.name} v${d.version} — ${statusStr}\n`);
+    console.log(`   Description:   ${d.description}`);
+    console.log(`   Provenance:    ${d.provenance ?? 'builtin'}`);
+    if (d.tags?.length) console.log(`   Tags:          ${d.tags.join(', ')}`);
+    if (d.toolAllowlist?.length) console.log(`   Tools allowed: ${d.toolAllowlist.join(', ')}`);
+    if (d.sourceSessionId) console.log(`   Source session: ${d.sourceSessionId}`);
+    if (d.modelId) console.log(`   Synthesized by: ${d.modelId}`);
+    if (d.createdAt) console.log(`   Created:        ${new Date(d.createdAt).toISOString()}`);
+    if (d.systemPromptAddition) {
+      console.log(`\n   System prompt addition:\n   ${'─'.repeat(50)}`);
+      for (const line of d.systemPromptAddition.split('\n')) {
+        console.log(`   ${line}`);
+      }
+      console.log(`   ${'─'.repeat(50)}`);
+    }
+
+    if (d.parentSkill) {
+      const parent = registry.get(d.parentSkill);
+      if (parent) {
+        console.log(`\n   Parent skill: ${d.parentSkill} (revision ${parent.definition.revision ?? 1} → ${d.revision})`);
+        if (parent.definition.systemPromptAddition !== d.systemPromptAddition) {
+          console.log('   System prompt changed (diff):');
+          console.log('   [parent] ' + (parent.definition.systemPromptAddition ?? '').slice(0, 100));
+          console.log('   [this  ] ' + (d.systemPromptAddition ?? '').slice(0, 100));
+        }
+      }
+    }
+
+    const m = state.metrics;
+    if (m && m.uses > 0) {
+      const rate = ((m.successes / m.uses) * 100).toFixed(0);
+      console.log(`\n   Metrics: ${m.uses} uses, ${rate}% success rate`);
+      if (m.avgTokensSaved !== undefined) {
+        console.log(`   Avg tokens saved: ${m.avgTokensSaved.toFixed(0)} per session`);
+      }
+    }
+
+    if (state.pendingApproval) {
+      console.log(`\n   To approve: ai-desk skill approve ${d.name}`);
+      console.log(`   To reject:  ai-desk skill reject ${d.name}\n`);
+    }
+    console.log('');
+  });
+
+skillCmd
+  .command('approve <name>')
+  .description('Approve a pending generated skill (enables it)')
+  .option('--skills-dir <path>', 'Skills directory', 'skills')
+  .action(async (name, opts) => {
+    const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
+    const generatedDir = resolve(opts.skillsDir, 'generated');
+    const registry = new SkillRegistry(dataDir, [opts.skillsDir, generatedDir, __pkgSkills]);
+    await registry.init();
+    const ok = registry.approve(name, { connectionId: 'cli' });
+    if (ok) {
+      console.log(`\n✅ Skill "${name}" approved and enabled. Restart gateway to apply.\n`);
+    } else {
+      console.error(`\n❌ Skill "${name}" not found.\n`);
+      process.exit(1);
+    }
+  });
+
+skillCmd
+  .command('reject <name>')
+  .description('Reject a pending generated skill (keeps disabled)')
+  .option('--skills-dir <path>', 'Skills directory', 'skills')
+  .action(async (name, opts) => {
+    const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
+    const generatedDir = resolve(opts.skillsDir, 'generated');
+    const registry = new SkillRegistry(dataDir, [opts.skillsDir, generatedDir, __pkgSkills]);
+    await registry.init();
+    const ok = registry.reject(name, { connectionId: 'cli' });
+    if (ok) {
+      console.log(`\n✅ Skill "${name}" rejected.\n`);
+    } else {
+      console.error(`\n❌ Skill "${name}" not found.\n`);
+      process.exit(1);
+    }
+  });
+
+skillCmd
+  .command('archive <name>')
+  .description('Archive a skill (removes from registry)')
+  .option('--skills-dir <path>', 'Skills directory', 'skills')
+  .action(async (name, opts) => {
+    const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
+    const generatedDir = resolve(opts.skillsDir, 'generated');
+    const registry = new SkillRegistry(dataDir, [opts.skillsDir, generatedDir, __pkgSkills]);
+    await registry.init();
+    const ok = registry.archive(name, { connectionId: 'cli' });
+    if (ok) {
+      console.log(`\n✅ Skill "${name}" archived.\n`);
+    } else {
+      console.error(`\n❌ Skill "${name}" not found.\n`);
+      process.exit(1);
+    }
+  });
+
+skillCmd
+  .command('revert <name>')
+  .description('Revert a skill to a previous revision (Phase 5 feature)')
+  .option('--to-revision <n>', 'Revision number to revert to')
+  .action((name, opts) => {
+    console.log(`\n⚠️  skill revert is not yet implemented (Phase 5).`);
+    console.log(`   Planned: revert "${name}" to revision ${opts.toRevision ?? '?'}\n`);
+  });
+
+skillCmd
+  .command('improve')
+  .description('Check enabled skills for improvement candidates and optionally trigger revisions')
+  .option('--skills-dir <path>', 'Skills directory', 'skills')
+  .option('--name <skillName>', 'Improve a specific skill by name (default: all candidates)')
+  .option('--dry-run', 'Show what would be revised without writing files', false)
+  .option('--output-dir <path>', 'Output directory for revised skills', 'skills/generated')
+  .action(async (opts) => {
+    const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
+    const { SkillImprover } = await import('../skills/skill-improver.js');
+    const { SkillTraceStore } = await import('../memory/skill-trace-store.js');
+    const { SkillRateLimiter } = await import('../skills/skill-rate-limit.js');
+    const { ModelRouter } = await import('../models/model-router.js');
+    const { CredentialStore } = await import('../auth/credential-store.js');
+    const { BudgetTracker } = await import('../budget/budget-tracker.js');
+    const { loadConfig } = await import('../config/config-loader.js');
+
+    const masterKey = process.env.AI_DESK_MASTER_KEY ?? 'dev-key';
+    const { config } = loadConfig(process.env.AI_DESK_CONFIG ?? 'ai-desk.json');
+    const synthConfig = config.skillSynthesis ?? {
+      model: 'anthropic/claude-sonnet-4-6',
+      improvementModel: 'anthropic/claude-sonnet-4-6',
+      scrubModel: 'anthropic/claude-haiku-4-5',
+      fallbackToHaikuUnderBudget: false,
+      maxPerDay: 5,
+      minGapMinutes: 15,
+      autoTriggerMinToolCalls: 8,
+      failureRateThreshold: 0.4,
+      minUsesBeforeImprovement: 30,
+      ttlDays: 60,
+      maxEnabledPerAgent: 15,
+      maxGeneratedTotal: 50,
+      deprecateAfterNegativeUses: 10,
+    };
+
+    const registry = new SkillRegistry(dataDir, [opts.skillsDir, __pkgSkills]);
+    await registry.init();
+    const traceStore = new SkillTraceStore(dataDir);
+    const credStore = new CredentialStore(dataDir, masterKey);
+    const router = new ModelRouter(
+      config.agents.defaults.model,
+      config.agents.defaults.subagents?.model ?? config.agents.defaults.model,
+      credStore,
+    );
+    const budget = new BudgetTracker(dataDir, config.agents.defaults.budget ?? {});
+    const rateLimiter = new SkillRateLimiter(dataDir, { maxPerDay: synthConfig.maxPerDay, minGapMinutes: synthConfig.minGapMinutes });
+
+    const improver = new SkillImprover({
+      traceStore,
+      registry,
+      router,
+      budget,
+      config: synthConfig,
+      outputDir: opts.outputDir,
+    });
+
+    const candidates = opts.name
+      ? (registry.get(opts.name) ? [registry.get(opts.name)!.definition] : [])
+      : improver.findCandidates();
+
+    if (candidates.length === 0) {
+      console.log('\n✅ No skills qualify for improvement at this time.\n');
+      rateLimiter.close();
+      traceStore.close();
+      return;
+    }
+
+    console.log(`\n🔧 Found ${candidates.length} improvement candidate(s):\n`);
+    for (const c of candidates) {
+      const m = registry.get(c.name)?.state.metrics;
+      const rate = m && m.uses > 0 ? ((m.failures / m.uses) * 100).toFixed(1) + '%' : 'n/a';
+      console.log(`   ${c.name} — failure rate: ${rate} (${m?.failures ?? 0}/${m?.uses ?? 0} uses)`);
+    }
+
+    if (opts.dryRun) {
+      console.log('\n   [dry-run] No files written.\n');
+      rateLimiter.close();
+      traceStore.close();
+      return;
+    }
+
+    console.log('\n   Improving...\n');
+    const results = await improver.improveAll({ agentId: 'cli', dryRun: opts.dryRun });
+
+    for (const r of results) {
+      if (r.errors) {
+        console.error(`   ❌ ${r.skillName}: ${r.errors.join(', ')}`);
+      } else if (r.skipped) {
+        console.log(`   ⏭️  ${r.skillName}: skipped — ${r.skipped}`);
+      } else if (r.sandboxRejected) {
+        console.log(`   🚫 ${r.skillName}: sandbox rejected revision (would increase token usage)`);
+      } else if (r.revised) {
+        console.log(`   ✅ ${r.skillName} → revision ${r.revised.revision} queued for approval`);
+        console.log(`      Run: ai-desk skill approve ${r.skillName}`);
+      }
+    }
+    console.log('');
+
+    rateLimiter.close();
+    traceStore.close();
+  });
+
+skillCmd
   .command('info <name>')
   .description('Show full details of a skill')
   .option('--skills-dir <path>', 'Skills directory', 'skills')
@@ -828,6 +1193,265 @@ skillCmd
       console.log(`      sandbox: ${d.mcpServer.sandbox}`);
     }
     console.log('');
+  });
+
+skillCmd
+  .command('merge <nameA> <nameB>')
+  .description('Merge two compatible skills into a single consolidated skill')
+  .option('--name <merged-name>', 'Name for the merged skill (default: <nameA>-<nameB>-merged)')
+  .option('--dry-run', 'Preview merge result without writing to disk', false)
+  .option('--archive-sources', 'Archive both source skills after merge is registered', false)
+  .option('--skills-dir <path>', 'Skills directory', 'skills')
+  .option('-c, --config <path>', 'Config file path', 'ai-desk.json')
+  .action(async (nameA, nameB, opts) => {
+    const masterKey = requireMasterKey();
+    const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
+    const { config } = loadConfig(opts.config);
+
+    const credStore = new CredentialStore(dataDir, masterKey);
+    const router = new ModelRouter(config.agents.defaults.model, config.agents.defaults.subagents.model, credStore);
+    const available = router.status().filter(p => p.available);
+    if (available.length === 0) {
+      console.error('\n❌ No model providers available. Set ANTHROPIC_API_KEY or GOOGLE_AI_API_KEY.\n');
+      process.exit(1);
+    }
+
+    const generatedDir = resolve(opts.skillsDir, 'generated');
+    const registry = new SkillRegistry(dataDir, [opts.skillsDir, generatedDir, __pkgSkills]);
+    await registry.init();
+
+    const { SkillMerger } = await import('../skills/skill-merger.js');
+    const merger = new SkillMerger({ registry, router, outputDir: generatedDir });
+
+    console.log(`\n🔀 ${opts.dryRun ? '[DRY RUN] ' : ''}Merging "${nameA}" + "${nameB}"...\n`);
+
+    const result = await merger.merge(nameA, nameB, {
+      dryRun: opts.dryRun,
+      mergedName: opts.name,
+      agentId: 'cli',
+    });
+
+    if (result.conflict) {
+      console.error(`❌ Merge conflict: ${result.conflict}\n`);
+      process.exit(1);
+    }
+    if (result.errors?.length) {
+      console.error(`❌ Merge failed:\n${result.errors.join('\n')}\n`);
+      process.exit(1);
+    }
+
+    const m = result.merged!;
+    console.log(`✅ Merged skill: ${m.name} v${m.version}`);
+    console.log(`   ${m.description}`);
+    if (m.tags?.length) console.log(`   Tags:  ${m.tags.join(', ')}`);
+    if (m.toolAllowlist?.length) console.log(`   Tools: ${m.toolAllowlist.join(', ')}`);
+    if (m.kind === 'avoid') console.log(`   Kind:  avoid`);
+    if (result.filePath) console.log(`   Written to: ${result.filePath}`);
+
+    if (result.dryRun) {
+      console.log('\n   [DRY RUN] Skill was NOT written to disk or registered.\n');
+    } else {
+      if (opts.archiveSources) {
+        merger.archiveSources(nameA, nameB, { connectionId: 'cli' });
+        console.log(`\n   Source skills archived: ${nameA}, ${nameB}`);
+      }
+      console.log('\n   Merged skill is pending approval. Run:');
+      console.log(`     ai-desk skill approve ${m.name}\n`);
+    }
+  });
+
+skillCmd
+  .command('merge-candidates')
+  .description('List pairs of enabled skills that are good candidates for merging')
+  .option('--skills-dir <path>', 'Skills directory', 'skills')
+  .action(async (opts) => {
+    const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
+    const registry = new SkillRegistry(dataDir, [opts.skillsDir, __pkgSkills]);
+    await registry.init();
+
+    const { SkillMerger } = await import('../skills/skill-merger.js');
+    const merger = new SkillMerger({
+      registry,
+      router: null as any, // only findMergeCandidates is called — no LLM needed
+      outputDir: resolve(opts.skillsDir, 'generated'),
+    });
+
+    const pairs = merger.findMergeCandidates();
+    if (pairs.length === 0) {
+      console.log('\n   No merge candidates found.\n');
+      return;
+    }
+
+    console.log(`\n🔀 Merge candidates (${pairs.length}):\n`);
+    for (const [a, b] of pairs) {
+      console.log(`   ${a}  +  ${b}`);
+      console.log(`     Run: ai-desk skill merge ${a} ${b}`);
+    }
+    console.log('');
+  });
+
+skillCmd
+  .command('scope <name>')
+  .description('Set the multi-agent scope for a skill')
+  .requiredOption('--set <scope>', 'Scope: agent | project | global')
+  .option('--allow-agent <id>', 'Agent ID to allow when scope=agent (repeatable)', (v: string, acc: string[]) => [...acc, v], [] as string[])
+  .option('--skills-dir <path>', 'Skills directory', 'skills')
+  .action(async (name, opts) => {
+    const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
+    const scopeValue = opts.set as 'agent' | 'project' | 'global';
+    if (!['agent', 'project', 'global'].includes(scopeValue)) {
+      console.error(`\n❌ Invalid scope "${scopeValue}". Must be: agent, project, or global.\n`);
+      process.exit(1);
+    }
+
+    const generatedDir = resolve(opts.skillsDir, 'generated');
+    const registry = new SkillRegistry(dataDir, [opts.skillsDir, generatedDir, __pkgSkills]);
+    await registry.init();
+
+    const skill = registry.get(name);
+    if (!skill) {
+      console.error(`\n❌ Skill "${name}" not found.\n`);
+      process.exit(1);
+    }
+
+    skill.definition.scope = scopeValue;
+    if (scopeValue === 'agent' && opts.allowAgent.length > 0) {
+      skill.definition.allowedAgents = [
+        ...new Set([...(skill.definition.allowedAgents ?? []), ...opts.allowAgent]),
+      ];
+    } else if (scopeValue !== 'agent') {
+      skill.definition.allowedAgents = undefined;
+    }
+
+    // Re-register to persist the change
+    registry.registerExternal(skill.definition, skill.state.filePath);
+
+    console.log(`\n✅ Skill "${name}" scope set to: ${scopeValue}`);
+    if (scopeValue === 'agent' && skill.definition.allowedAgents?.length) {
+      console.log(`   Allowed agents: ${skill.definition.allowedAgents.join(', ')}`);
+    }
+    console.log('');
+  });
+
+skillCmd
+  .command('eval [skill-name]')
+  .description('Run golden task evaluations against one or all enabled skills')
+  .option('--all', 'Evaluate all enabled skills', false)
+  .option('--tag <tag>', 'Only run evals with this tag (repeatable)', (v: string, acc: string[]) => [...acc, v], [] as string[])
+  .option('--evals-dir <path>', 'Directory containing *.eval.json files', 'evals/golden')
+  .option('--skills-dir <path>', 'Skills directory', 'skills')
+  .option('-c, --config <path>', 'Config file path', 'ai-desk.json')
+  .action(async (skillName: string | undefined, opts) => {
+    const masterKey = requireMasterKey();
+    const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
+    const { config } = loadConfig(opts.config);
+
+    const credStore = new CredentialStore(dataDir, masterKey);
+    const router = new ModelRouter(config.agents.defaults.model, config.agents.defaults.subagents.model, credStore);
+    const available = router.status().filter(p => p.available);
+    if (available.length === 0) {
+      console.error('\n❌ No model providers available. Set ANTHROPIC_API_KEY or GOOGLE_AI_API_KEY.\n');
+      process.exit(1);
+    }
+
+    const generatedDir = resolve(opts.skillsDir, 'generated');
+    const registry = new SkillRegistry(dataDir, [opts.skillsDir, generatedDir, __pkgSkills]);
+    await registry.init();
+
+    const { SkillEvaluator } = await import('../skills/skill-eval.js');
+    const evaluator = new SkillEvaluator({ registry, router, goldenDir: opts.evalsDir });
+
+    const evalOpts = { tags: opts.tag.length ? opts.tag : undefined, goldenDir: opts.evalsDir };
+
+    let reports;
+    if (opts.all || !skillName) {
+      console.log('\n🧪 Evaluating all enabled skills...\n');
+      reports = await evaluator.evalAll(evalOpts);
+    } else {
+      console.log(`\n🧪 Evaluating skill: ${skillName}\n`);
+      reports = [await evaluator.evalSkill(skillName, evalOpts)];
+    }
+
+    let anyResults = false;
+    for (const report of reports) {
+      if (report.totalTasks === 0) continue;
+      anyResults = true;
+      const pct = (report.score * 100).toFixed(0);
+      const icon = report.score >= 0.8 ? '✅' : report.score >= 0.5 ? '⚠️ ' : '❌';
+      console.log(`${icon} ${report.skillName}: ${report.passed}/${report.totalTasks} passed (${pct}%)`);
+      for (const r of report.results) {
+        const rIcon = r.passed ? '  ✓' : '  ✗';
+        console.log(`${rIcon} [${r.taskId}] ${r.reasoning}`);
+      }
+      console.log('');
+    }
+
+    if (!anyResults) {
+      console.log('   No eval tasks found. Add *.eval.json files to evals/golden/\n');
+    }
+  });
+
+skillCmd
+  .command('export <name>')
+  .description('Export a skill as a portable bundle JSON file')
+  .option('--out <path>', 'Output file path (default: <name>.skill-bundle.json)')
+  .option('--skills-dir <path>', 'Skills directory', 'skills')
+  .action(async (name, opts) => {
+    const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
+    const generatedDir = resolve(opts.skillsDir, 'generated');
+    const registry = new SkillRegistry(dataDir, [opts.skillsDir, generatedDir, __pkgSkills]);
+    await registry.init();
+
+    const { exportSkill } = await import('../skills/skill-export.js');
+    const outPath = opts.out ?? `${name}.skill-bundle.json`;
+
+    try {
+      const result = exportSkill(registry, name, outPath);
+      console.log(`\n✅ Exported: ${result.filePath}`);
+      console.log(`   Skill: ${result.bundle.skill.name} v${result.bundle.skill.version}`);
+      console.log(`   Checksum: ${result.bundle.exportMeta.checksum.slice(0, 16)}...\n`);
+    } catch (err) {
+      console.error(`\n❌ Export failed: ${(err as Error).message}\n`);
+      process.exit(1);
+    }
+  });
+
+skillCmd
+  .command('import <bundle-path>')
+  .description('Import a skill bundle and register it for approval')
+  .option('--skills-dir <path>', 'Skills directory', 'skills')
+  .option('--skip-conflict-check', 'Skip conflict detection (not recommended)', false)
+  .action(async (bundlePath, opts) => {
+    const dataDir = process.env.AI_DESK_DATA_DIR ?? './.ai-desk-data';
+    const generatedDir = resolve(opts.skillsDir, 'generated');
+    const registry = new SkillRegistry(dataDir, [opts.skillsDir, generatedDir, __pkgSkills]);
+    await registry.init();
+
+    const { importSkill } = await import('../skills/skill-import.js');
+
+    console.log(`\n📦 Importing skill bundle: ${bundlePath}\n`);
+
+    const result = importSkill(registry, {
+      bundlePath: resolve(bundlePath),
+      outputDir: generatedDir,
+      actor: { connectionId: 'cli' },
+      skipConflictCheck: opts.skipConflictCheck,
+    });
+
+    if (result.errors?.length) {
+      console.error(`❌ Import failed:\n${result.errors.join('\n')}\n`);
+      process.exit(1);
+    }
+
+    if (result.conflicts?.length) {
+      console.log(`⚠️  Conflict warnings:`);
+      for (const c of result.conflicts) console.log(`   - ${c}`);
+    }
+
+    console.log(`✅ Imported: ${result.skillName}`);
+    if (result.filePath) console.log(`   Written to: ${result.filePath}`);
+    console.log('\n   Skill is pending approval. Run:');
+    console.log(`     ai-desk skill approve ${result.skillName}\n`);
   });
 
 // ─── Serve MCP (AI_DESK as MCP Server) ───────────────────

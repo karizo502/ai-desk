@@ -1,0 +1,8 @@
+{
+  "id": "structured-output-001",
+  "description": "Agent should produce structured JSON output when asked to extract data",
+  "prompt": "Extract all email addresses from this text and return them as a JSON array:\n\nContact us at support@example.com or sales@company.org for help.",
+  "expectedOutcome": "The agent returns a valid JSON array: [\"support@example.com\", \"sales@company.org\"]",
+  "expectedToolCalls": [],
+  "tags": ["structured-output", "data-extraction"]
+}

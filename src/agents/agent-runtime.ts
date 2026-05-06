@@ -29,6 +29,9 @@ import type { ModelMessage } from '../models/provider.js';
 import type { AgentConfig, AgentDefaultsSchema } from '../config/schema.js';
 import type { Static } from '@sinclair/typebox';
 import type { MemoryStore } from '../memory/memory-store.js';
+import type { SkillTraceStore } from '../memory/skill-trace-store.js';
+import type { SkillRegistry } from '../skills/skill-registry.js';
+import type { SkillAutoTrigger } from '../skills/skill-auto-trigger.js';
 
 type AgentDefaults = Static<typeof AgentDefaultsSchema>;
 
@@ -96,6 +99,9 @@ export class AgentRuntime {
   private agents: Map<string, AgentConfig>;
   private systemPromptProvider: ((agentId: string) => string) | null = null;
   private memoryStore: MemoryStore | null = null;
+  private traceStore: SkillTraceStore | null = null;
+  private skillRegistry: SkillRegistry | null = null;
+  private autoTrigger: SkillAutoTrigger | null = null;
   /** agentId → number of concurrently running calls */
   private activeRuns = new Map<string, number>();
 
@@ -112,6 +118,9 @@ export class AgentRuntime {
     agents: AgentConfig[];
     systemPromptProvider?: (agentId: string) => string;
     memoryStore?: MemoryStore;
+    traceStore?: SkillTraceStore;
+    skillRegistry?: SkillRegistry;
+    autoTrigger?: SkillAutoTrigger;
   }) {
     this.router = deps.router;
     this.cache = deps.cache;
@@ -125,6 +134,9 @@ export class AgentRuntime {
     this.agents = new Map(deps.agents.map(a => [a.id, a]));
     this.systemPromptProvider = deps.systemPromptProvider ?? null;
     this.memoryStore = deps.memoryStore ?? null;
+    this.traceStore = deps.traceStore ?? null;
+    this.skillRegistry = deps.skillRegistry ?? null;
+    this.autoTrigger = deps.autoTrigger ?? null;
   }
 
   /** Update the system prompt provider (called after skill enable/disable) */
@@ -180,6 +192,10 @@ export class AgentRuntime {
     const session = this.sessions.create(req.agentId, req.channelId, req.peerId);
     const transcript = (session.transcript as ModelMessage[]) ?? [];
     transcript.push({ role: 'user', content: req.userMessage });
+
+    // Init trace (no-op if traceStore absent)
+    this.traceStore?.initSession(session.id, req.agentId, agentCfg.skills ?? []);
+    this.traceStore?.recordTurn({ sessionId: session.id, idx: 0, role: 'user', content: req.userMessage });
 
     // 3. Inject long-term memories (before compaction so they're in context)
     let working = transcript;
@@ -367,6 +383,17 @@ export class AgentRuntime {
             toolUseId: toolCall.id,
             toolName: toolCall.name,
           });
+
+          this.traceStore?.recordTurn({
+            sessionId: session.id,
+            idx: -1, // store auto-increments via nextIdx
+            role: 'tool',
+            content: toolOutput,
+            toolName: toolCall.name,
+            toolInput: toolCall.input as Record<string, unknown>,
+            toolOutput,
+            isError: toolIsError,
+          });
         }
       }
 
@@ -395,6 +422,15 @@ export class AgentRuntime {
         };
       }
 
+      this.traceStore?.finalizeSession(session.id, 'success', totalInput + totalOutput);
+      this.recordSkillMetrics(agentCfg, true);
+      this.autoTrigger?.maybeEnqueue({
+        agentId: req.agentId,
+        sessionId: session.id,
+        toolCallCount: steps,
+        projectRoot: agentCfg.workspace,
+      });
+
       return {
         success: true,
         content: lastAssistantContent,
@@ -414,6 +450,8 @@ export class AgentRuntime {
     } catch (err) {
       // Persist what we have so the conversation can resume
       this.sessions.update(session.id, { transcript: working });
+      this.traceStore?.finalizeSession(session.id, 'failure', totalInput + totalOutput);
+      this.recordSkillMetrics(agentCfg, false);
       return {
         success: false,
         content: lastAssistantContent,
@@ -443,6 +481,20 @@ export class AgentRuntime {
       parentRunId: parent.runId,
       parentDepth: parent.depth,
     });
+  }
+
+  private recordSkillMetrics(agentCfg: AgentConfig, success: boolean): void {
+    if (!this.skillRegistry) return;
+    const skillNames = agentCfg.skills ?? [];
+    for (const name of skillNames) {
+      const skill = this.skillRegistry.get(name);
+      if (skill?.state.enabled) {
+        this.skillRegistry.recordUsage(name, success);
+      }
+    }
+    if (skillNames.length > 0) {
+      eventBus.emit('skills:metrics:updated', { agentId: agentCfg.id, count: skillNames.length, success });
+    }
   }
 
   private fail(req: AgentRunRequest, runId: string, start: number, error: string): AgentRunResult {
