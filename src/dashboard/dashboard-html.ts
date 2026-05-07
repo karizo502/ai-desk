@@ -3768,7 +3768,12 @@ async function loadProjects() {
     else if (projectsData[0]) await selectProject(projectsData[0].id);
     else {
       selectedProjectId = null;
-      $('project-detail').innerHTML = '<div class="dossier-empty">NO PROJECTS YET</div>';
+      const hc = $('project-header-content');
+      if (hc) hc.innerHTML = '<div class="dossier-empty">NO PROJECTS YET</div>';
+      const db = $('project-dispatch-bar');
+      if (db) db.style.display = 'none';
+      const tl = $('project-task-list');
+      if (tl) tl.innerHTML = '';
     }
   } catch (e) {
     roster.innerHTML = '<div class="dossier-empty" style="color:var(--red)">' + esc(String(e)) + '</div>';
@@ -3842,20 +3847,23 @@ async function selectProject(id) {
   document.querySelectorAll('#projects-roster .roster-row').forEach(r => {
     r.classList.toggle('selected', /** @type {HTMLElement} */(r).dataset.pid === id);
   });
-  const detail = $('project-detail');
-  if (!detail) return;
-  detail.innerHTML = '<div class="dossier-empty">Loading...</div>';
+  const headerContent = $('project-header-content');
+  const dispatchBar = $('project-dispatch-bar');
+  const taskList = $('project-task-list');
+  if (headerContent) headerContent.innerHTML = '<div class="dossier-empty">Loading...</div>';
+  if (dispatchBar) dispatchBar.style.display = 'none';
+  if (taskList) taskList.innerHTML = '';
   try {
     const r = await apiFetch('/dashboard/api/projects/' + encodeURIComponent(id));
     const d = await r.json();
     if (!r.ok || d.error) {
-      detail.innerHTML = '<div class="dossier-empty" style="color:var(--red)">' + esc(d.error || 'Project not found') + '</div>';
+      if (headerContent) headerContent.innerHTML = '<div class="dossier-empty" style="color:var(--red)">' + esc(d.error || 'Project not found') + '</div>';
       return;
     }
     selectedProjectDetail = d;
     renderProjectDetail();
   } catch (e) {
-    detail.innerHTML = '<div class="dossier-empty" style="color:var(--red)">' + esc(String(e)) + '</div>';
+    if (headerContent) headerContent.innerHTML = '<div class="dossier-empty" style="color:var(--red)">' + esc(String(e)) + '</div>';
   }
 }
 

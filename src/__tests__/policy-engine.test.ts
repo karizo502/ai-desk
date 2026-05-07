@@ -1,5 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PolicyEngine } from '../tools/policy-engine.js';
+import type { ManifestStore, ManifestEntry } from '../tools/manifest-store.js';
+import { eventBus } from '../shared/events.js';
 
 const baseReq = {
   input: {},
@@ -103,5 +105,73 @@ describe('PolicyEngine — subagent depth', () => {
     // exec_command is a high-risk tool; exact behaviour depends on implementation
     // At minimum it should not straight-up allow without consideration
     expect(typeof r.allowed).toBe('boolean');
+  });
+});
+
+// ─── Manifest integration ──────────────────────────────────
+
+const fileEntry: ManifestEntry = {
+  tool: 'write_file',
+  scopes: [{ kind: 'path', glob: '/workspace/**' }],
+  purpose: 'write source files',
+};
+
+/** Builds a ManifestStore stub that always returns the given entry (or null) */
+function makeManifestStub(entry: ManifestEntry | null): ManifestStore {
+  return { matchCall: vi.fn().mockReturnValue(entry) } as unknown as ManifestStore;
+}
+
+describe('PolicyEngine — manifest integration', () => {
+  it('allows a deny-all tool when manifest entry matches', () => {
+    const policy = new PolicyEngine({ profile: 'deny-all' }, makeManifestStub(fileEntry));
+    const r = policy.checkPermission({ ...baseReq, name: 'write_file', input: { path: '/workspace/src/a.ts' } });
+    expect(r.allowed).toBe(true);
+    expect(r.requiresApproval).toBe(false);
+    expect(r.reason).toContain('manifest');
+  });
+
+  it('allows a profile-blocked tool when manifest entry matches', () => {
+    const policy = new PolicyEngine({ profile: 'readonly' }, makeManifestStub(fileEntry));
+    const r = policy.checkPermission({ ...baseReq, name: 'write_file', input: { path: '/workspace/src/a.ts' } });
+    expect(r.allowed).toBe(true);
+  });
+
+  it('falls through to requiresApproval when manifest returns null (scope mismatch)', () => {
+    const policy = new PolicyEngine({ profile: 'deny-all' }, makeManifestStub(null));
+    const r = policy.checkPermission({ ...baseReq, name: 'write_file', input: { path: '/etc/passwd' } });
+    expect(r.allowed).toBe(false);
+    expect(r.requiresApproval).toBe(true);
+  });
+
+  it('explicit deny wins over manifest match', () => {
+    const policy = new PolicyEngine(
+      { profile: 'deny-all', deny: ['write_file'] },
+      makeManifestStub(fileEntry),
+    );
+    const r = policy.checkPermission({ ...baseReq, name: 'write_file', input: { path: '/workspace/a.ts' } });
+    expect(r.allowed).toBe(false);
+    expect(r.requiresApproval).toBe(false);
+  });
+
+  it('no manifest store → existing deny-all behavior unchanged', () => {
+    // Default ManifestStore singleton has no active manifests for this session
+    const policy = new PolicyEngine({ profile: 'deny-all' });
+    const r = policy.checkPermission({ ...baseReq, name: 'write_file' });
+    expect(r.allowed).toBe(false);
+    expect(r.requiresApproval).toBe(true);
+  });
+
+  it('emits tool:manifest_grant event on match', () => {
+    const handler = vi.fn();
+    eventBus.on('tool:manifest_grant', handler);
+
+    const policy = new PolicyEngine({ profile: 'deny-all' }, makeManifestStub(fileEntry));
+    policy.checkPermission({ ...baseReq, name: 'write_file', input: { path: '/workspace/a.ts' } });
+
+    expect(handler).toHaveBeenCalledOnce();
+    expect(handler.mock.calls[0][0].data.tool).toBe('write_file');
+    expect(handler.mock.calls[0][0].data.purpose).toBe('write source files');
+
+    eventBus.off('tool:manifest_grant', handler);
   });
 });

@@ -7,6 +7,7 @@
 import { eventBus } from '../shared/events.js';
 import type { ToolPolicyConfig, ToolProfile } from '../config/schema.js';
 import type { ToolRequest } from '../shared/types.js';
+import { manifestStore as defaultManifestStore, type ManifestStore } from './manifest-store.js';
 
 /** Built-in profile definitions */
 const PROFILE_RULES: Record<ToolProfile, { allow: string[]; deny: string[] }> = {
@@ -44,9 +45,11 @@ export class PolicyEngine {
   private skillAllowlist: Set<string> = new Set();
   /** Per-agent skill allowlist: agentId → Set of tool names */
   private agentSkillAllowlists = new Map<string, Set<string>>();
+  private manifests: ManifestStore;
 
-  constructor(config: ToolPolicyConfig) {
+  constructor(config: ToolPolicyConfig, manifests: ManifestStore = defaultManifestStore) {
     this.config = config;
+    this.manifests = manifests;
   }
 
   /** Called by SkillRegistry to add skill-provided tool allowlist entries */
@@ -71,14 +74,14 @@ export class PolicyEngine {
 
   /**
    * Check if a tool call is allowed.
-   * Order: session override > per-tool config > profile default
+   * Order: session override > explicit deny > manifest > per-tool config > profile default
    */
   checkPermission(request: ToolRequest): {
     allowed: boolean;
     reason: string;
     requiresApproval: boolean;
   } {
-    const { name, sessionId, agentId } = request;
+    const { name, sessionId, agentId, input, teamId } = request;
 
     // 1. Check session-scoped overrides
     const overrideKey = `${sessionId}:${name}`;
@@ -91,7 +94,7 @@ export class PolicyEngine {
       };
     }
 
-    // 2. Check per-tool deny list (explicit deny always wins)
+    // 2. Check per-tool deny list (explicit deny always wins — manifest cannot override)
     if (this.config.deny?.some(pattern => this.matchTool(name, pattern))) {
       eventBus.emit('tool:denied', { tool: name, sessionId, agentId, reason: 'explicit deny' });
       return {
@@ -101,7 +104,26 @@ export class PolicyEngine {
       };
     }
 
-    // 3. Check per-tool allow list + skill allowlist (per-agent takes priority over global)
+    // 3. Check active manifest (pre-flight approval by lead agent)
+    // For team runs teamId is the manifest scope; fall back to sessionId for solo runs.
+    const manifestEntry = teamId
+      ? (this.manifests.matchCall(name, input, teamId) ?? this.manifests.matchCall(name, input, sessionId))
+      : this.manifests.matchCall(name, input, sessionId);
+    if (manifestEntry) {
+      eventBus.emit('tool:manifest_grant', {
+        tool: name,
+        sessionId,
+        agentId,
+        purpose: manifestEntry.purpose,
+      });
+      return {
+        allowed: true,
+        reason: `Tool "${name}" allowed by pre-flight manifest (${manifestEntry.purpose})`,
+        requiresApproval: false,
+      };
+    }
+
+    // 4. Check per-tool allow list + skill allowlist (per-agent takes priority over global)
     const effectiveSkillAllowlist = agentId && this.agentSkillAllowlists.has(agentId)
       ? this.agentSkillAllowlists.get(agentId)!
       : this.skillAllowlist;
@@ -114,7 +136,7 @@ export class PolicyEngine {
       };
     }
 
-    // 4. Check profile rules
+    // 5. Check profile rules
     const profile = PROFILE_RULES[this.config.profile];
 
     // Deny-all: nothing is allowed unless explicitly listed
@@ -155,7 +177,7 @@ export class PolicyEngine {
       };
     }
 
-    // Default: deny
+    // Default: deny — fall back to single-call approval (hybrid: outside-manifest tools still ask)
     eventBus.emit('tool:denied', { tool: name, sessionId, agentId, reason: 'not in allow list' });
     return {
       allowed: false,

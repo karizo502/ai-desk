@@ -21,6 +21,11 @@ import type { ProjectStore, Project, TeamRun } from '../projects/project-store.j
 import type { IssueStore } from '../projects/issue-store.js';
 import { buildProjectContext } from '../projects/project-context-builder.js';
 import { exportProjectMarkdown } from '../projects/project-exporter.js';
+import type { LeadPlanner } from '../agents/lead-planner.js';
+import type { ToolManifest } from '../shared/types.js';
+
+/** Callback to show the manifest to the user and wait for approval */
+export type ManifestApprovalRequester = (manifest: ToolManifest) => Promise<boolean>;
 
 export class TeamCoordinator {
   private runtime: AgentRuntime;
@@ -29,6 +34,8 @@ export class TeamCoordinator {
   private teams: Map<string, TeamDefinition>;
   private projectStore: ProjectStore | null;
   private issueStore: IssueStore | null;
+  private leadPlanner: LeadPlanner | null;
+  private requestManifestApproval: ManifestApprovalRequester;
 
   constructor(opts: {
     runtime: AgentRuntime;
@@ -36,6 +43,10 @@ export class TeamCoordinator {
     teams: TeamDefinition[];
     projectStore?: ProjectStore;
     issueStore?: IssueStore;
+    /** Optional — if omitted, manifest planning is skipped (auto-approved) */
+    leadPlanner?: LeadPlanner;
+    /** Called with the manifest before team execution; return true to approve */
+    requestManifestApproval?: ManifestApprovalRequester;
   }) {
     this.runtime = opts.runtime;
     this.orchestrator = new Orchestrator(opts.runtime);
@@ -43,6 +54,9 @@ export class TeamCoordinator {
     this.teams = new Map(opts.teams.map(t => [t.id, t]));
     this.projectStore = opts.projectStore ?? null;
     this.issueStore = opts.issueStore ?? null;
+    this.leadPlanner = opts.leadPlanner ?? null;
+    // Default: auto-approve (backward compat — no UI connected)
+    this.requestManifestApproval = opts.requestManifestApproval ?? (async () => true);
   }
 
   listTeams(): TeamDefinition[] {
@@ -425,6 +439,35 @@ export class TeamCoordinator {
       if (!role?.systemPromptPrefix) return task;
       return { ...task, prompt: `${role.systemPromptPrefix}\n\n${task.prompt}` };
     });
+
+    // ── Phase 1b: pre-flight manifest (optional) ─────────────────────────
+    if (this.leadPlanner && tasks.length > 0) {
+      const manifest = await this.leadPlanner.planFromTasks({
+        goal,
+        teamId,
+        teamName: team.name,
+        tasks,
+        preferredModel: undefined,
+        taskId: `${teamId}:__manifest__`,
+      });
+
+      const approved = await this.requestManifestApproval(manifest);
+
+      if (approved) {
+        const { manifestStore } = await import('../tools/manifest-store.js');
+        manifestStore.approve(manifest.id, 'user');
+      } else {
+        const err = 'Team run aborted: manifest rejected by user';
+        eventBus.emit('manifest:rejected', { manifestId: manifest.id, teamId, rejectedBy: 'user' });
+        eventBus.emit('team:failed', { teamId, error: err });
+        return {
+          teamId, teamName: team.name, goal, success: false, synthesis: err,
+          taskCount: 0, doneCount: 0, failedCount: 0,
+          totalDurationMs: Date.now() - start, tokensUsed: totalTokens,
+          projectId: project?.id ?? null, runId: persistedRunId, resumable: false,
+        };
+      }
+    }
 
     // Subscribe eventBus for task lifecycle → DB updates
     const store = this.projectStore;

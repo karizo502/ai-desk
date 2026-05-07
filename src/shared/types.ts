@@ -99,7 +99,14 @@ export type GatewayEvent =
   | 'cron:failed'
   // Per-agent connection events
   | 'messaging:connection:started'
-  | 'messaging:connection:stopped';
+  | 'messaging:connection:stopped'
+  // Manifest events
+  | 'manifest:created'
+  | 'manifest:approved'
+  | 'manifest:rejected'
+  | 'manifest:expired'
+  | 'tool:manifest_grant'
+  | 'tool:outside_manifest';
 
 /** Connection metadata */
 export interface ConnectionMeta {
@@ -144,6 +151,8 @@ export interface ToolRequest {
   agentId: AgentId;
   runId: RunId;
   subagentDepth: number;
+  /** Set when the request originates from a team run — used for manifest lookup */
+  teamId?: string;
 }
 
 /** Tool execution result */
@@ -154,6 +163,39 @@ export interface ToolResult {
   approved: boolean;
   sandboxed: boolean;
   tokensUsed?: number;
+}
+
+// ─── Manifest ─────────────────────────────────────────────
+
+/** Scope rule for a single tool in a manifest entry */
+export type ScopeRule =
+  | { kind: 'path'; glob: string }
+  | { kind: 'domain'; pattern: string }
+  | { kind: 'command-class'; class: 'build' | 'vcs-readonly' | 'vcs-write' | 'destructive' | 'custom'; commands?: string[] }
+  | { kind: 'any' };
+
+export interface ManifestEntry {
+  tool: string;
+  scopes: ScopeRule[];
+  purpose: string;
+  estimatedCalls?: number;
+}
+
+export interface ToolManifest {
+  id: string;
+  taskId: string;
+  teamId: string;
+  sessionId: string;
+  goal: string;
+  steps: { title: string; intent: string }[];
+  entries: ManifestEntry[];
+  riskSelfAssessment: 'low' | 'medium' | 'high';
+  status: 'pending' | 'approved' | 'rejected' | 'expired' | 'consumed';
+  rememberForSession: boolean;
+  createdAt: number;
+  approvedAt?: number;
+  approvedBy?: string;
+  expiresAt?: number;
 }
 
 /** Budget status */

@@ -137,6 +137,7 @@ export class Orchestrator {
         agentId,
         channelId: req.channelId ?? 'orchestrator',
         peerId: req.peerId ?? 'orchestrator',
+        teamId: req.teamId,
         onProgress: (event) => {
           eventBus.emit('task:step', { taskId: id, agentId, teamId, label, step: event.type,
             detail: event.type === 'tool_use' ? (event as { toolName: string }).toolName : undefined });

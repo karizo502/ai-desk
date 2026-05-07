@@ -58,6 +58,8 @@ export interface AgentRunRequest {
   maxTokens?: number;
   /** Called whenever the agent writes a file — used for artifact tracking */
   onFileWrite?: (event: { agentId: string; relativePath: string; bytes: number }) => void;
+  /** Set when the agent runs as part of a team — threads through to manifest lookup */
+  teamId?: string;
 }
 
 export type AgentProgressEvent =
@@ -362,6 +364,7 @@ export class AgentRuntime {
               runId,
               workspace,
               subagentDepth: 0,
+              teamId: req.teamId,
               requestApproval: req.requestApproval,
               onFileWrite: req.onFileWrite
                 ? (e) => req.onFileWrite!({ agentId: req.agentId, ...e })

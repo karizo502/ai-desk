@@ -17,6 +17,7 @@ import type { ToolRegistry } from './tool-registry.js';
 import type { ModelToolCall } from '../models/provider.js';
 import type { SandboxConfig } from '../config/schema.js';
 import { v4 as uuid } from 'uuid';
+import { manifestStore } from '../tools/manifest-store.js';
 
 export interface ToolExecuteRequest {
   call: ModelToolCall;
@@ -25,6 +26,8 @@ export interface ToolExecuteRequest {
   runId: string;
   workspace: string;
   subagentDepth: number;
+  /** Set when the request originates from a team run — used for manifest lookup */
+  teamId?: string;
   /** Per-run approval requester — overrides the instance-level default when provided */
   requestApproval?: ApprovalRequester;
   onFileWrite?: (event: { relativePath: string; bytes: number }) => void;
@@ -101,6 +104,7 @@ export class ToolExecutor {
       agentId: req.agentId,
       runId: req.runId,
       subagentDepth: req.subagentDepth,
+      teamId: req.teamId,
     });
 
     if (!decision.allowed && !decision.requiresApproval) {
@@ -118,6 +122,19 @@ export class ToolExecutor {
     // Approval flow if required
     let approved = decision.allowed;
     if (!decision.allowed && decision.requiresApproval) {
+      // Emit outside-manifest warning if there's an active manifest for this team/session
+      const scopeId = req.teamId ?? req.sessionId;
+      const activeManifest = manifestStore.getActive(scopeId);
+      if (activeManifest) {
+        eventBus.emit('tool:outside_manifest', {
+          tool: req.call.name,
+          sessionId: req.sessionId,
+          agentId: req.agentId,
+          teamId: req.teamId,
+          manifestId: activeManifest.id,
+        });
+      }
+
       const requester = req.requestApproval ?? this.requestApproval;
       approved = await requester({
         requestId: uuid(),
