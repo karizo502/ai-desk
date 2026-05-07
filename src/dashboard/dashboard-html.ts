@@ -3808,7 +3808,7 @@ function renderProjects() {
     const progress = Math.min(100, Math.max(0, Number(p.progress ?? p.runCount ?? 0)));
     const open = Number(p.openIssueCount || 0);
     const done = Number(p.runCount || 0);
-    return '<button onclick="selectProject(\'' + pid + '\')" style="all:unset;cursor:pointer;display:block;width:100%;box-sizing:border-box;'
+    return '<button onclick="selectProject(\\'' + pid + '\\')" style="all:unset;cursor:pointer;display:block;width:100%;box-sizing:border-box;'
       + 'padding:16px 16px;border-bottom:1px solid var(--border);'
       + 'background:' + (active ? 'var(--accent-soft)' : 'transparent') + ';'
       + 'border-left:3px solid ' + (active ? 'var(--accent)' : 'transparent') + ';'
@@ -3906,7 +3906,7 @@ function renderProjectDetail() {
     if (chips) {
       const suggestions = ['Add a settings page', 'Write unit tests', 'Fix the crash on empty response', 'Refactor the auth module'];
       chips.innerHTML = suggestions.map(s =>
-        '<button type="button" onclick="$(\'project-task-input\').value=\'' + s.replace(/'/g, "\\'") + '\';updateDispatchBtn()" style="all:unset;cursor:pointer;padding:4px 10px;border:1px solid var(--border);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:0.06em">' + esc(s) + '</button>'
+        '<button type="button" onclick="$(\\\'project-task-input\\\').value=\\'' + s.replace(/'/g, "\\'") + '\\';updateDispatchBtn()" style="all:unset;cursor:pointer;padding:4px 10px;border:1px solid var(--border);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:0.06em">' + esc(s) + '</button>'
       ).join('');
     }
   }
